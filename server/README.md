@@ -22,6 +22,12 @@ Create `.env` in the project root or export vars in your shell:
 HELIUS_API_KEY=your_helius_key
 WEBHOOK_SECRET=your_shared_secret
 PORT=8787
+# Optional: auto-track creator wallet for latest mint (Pump.fun)
+TRACK_WALLET=CreatorWalletPubkey
+PUMPFUN_PROGRAM_ID=Vote111111111111111111111111111111111111111  # update with real program id if desired
+# Scheduler
+DRAW_INTERVAL_MS=3600000
+DRAW_ANCHOR_MS=0
 ```
 
 3) Run

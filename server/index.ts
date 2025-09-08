@@ -18,6 +18,8 @@ try {
 const PORT = Number(process.env.PORT || 8787);
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || "";
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || "dev";
+const TRACK_WALLET = process.env.TRACK_WALLET || ""; // creator wallet to watch
+const PUMPFUN_PROGRAM_ID = process.env.PUMPFUN_PROGRAM_ID || ""; // optional filter
 
 if (!HELIUS_API_KEY) {
   console.warn("[warn] HELIUS_API_KEY not set. Set it in your environment.");
@@ -356,6 +358,44 @@ app.post("/webhooks/helius", async (req, reply) => {
   return { ok: true };
 });
 
+// Webhook: notify server when the creator wallet mints a new token (near-instant switch)
+app.post("/webhooks/creator", async (req, reply) => {
+  const url = req.raw.url || "";
+  const urlSecret = url.includes("secret=") ? url.split("secret=")[1].split("&")[0] : undefined;
+  if (urlSecret !== WEBHOOK_SECRET) return reply.status(403).send({ ok: false });
+
+  try {
+    const body = req.body as any;
+    const items = Array.isArray(body) ? body : [body];
+    // Try to extract a mint directly from webhook body
+    let foundMint: string | undefined;
+    for (const item of items) {
+      const tts: any[] = Array.isArray(item?.tokenTransfers) ? item.tokenTransfers : [];
+      for (const tt of tts) {
+        if (tt?.mint && typeof tt.mint === 'string') {
+          // If TRACK_WALLET is set, ensure the signer or account list includes it
+          const signers: string[] = Array.isArray(item?.signers) ? item.signers : [];
+          const accounts: string[] = Array.isArray(item?.accounts) ? item.accounts : [];
+          const involvesCreator = !TRACK_WALLET || signers.includes(TRACK_WALLET) || accounts.includes(TRACK_WALLET);
+          if (involvesCreator) { foundMint = tt.mint; break; }
+        }
+      }
+      if (foundMint) break;
+    }
+
+    if (foundMint) {
+      await reconcileAndBroadcast(foundMint);
+    } else {
+      // Fallback: run the poller once to discover latest
+      await pollCreatorForLatestMint();
+    }
+    return { ok: true };
+  } catch (e) {
+    reply.status(500);
+    return { ok: false, error: String((e as Error).message || e) };
+  }
+});
+
 setInterval(async () => {
   if (!store.getMint()) return;
   try { await reconcileAndBroadcast(store.getMint()); } catch {}
@@ -436,5 +476,49 @@ scheduleNextDrawTick();
 app.listen({ port: PORT, host: "0.0.0.0" }).then(() => {
   console.log(`PumpPot holders server listening on ${PORT}`);
 });
+
+// ------------------------------------------------------------
+// Auto-track latest token mint by a creator wallet (Helius Enhanced API)
+// ------------------------------------------------------------
+let lastCreatorMintSig: string | undefined;
+async function pollCreatorForLatestMint() {
+  if (!HELIUS_API_KEY || !TRACK_WALLET) return;
+  try {
+    const url = `https://api.helius.xyz/v0/addresses/${TRACK_WALLET}/transactions?api-key=${HELIUS_API_KEY}&types=TOKEN_MINT&limit=5`;
+    const res = await fetch(url);
+    if (!res.ok) return;
+    const arr: any = await res.json();
+    if (!Array.isArray(arr) || arr.length === 0) return;
+    // Prefer a tx that mentions the Pump.fun program if configured
+    const pick = (txs: any[]) => {
+      for (const tx of txs) {
+        if (PUMPFUN_PROGRAM_ID) {
+          const programs: string[] = Array.isArray(tx.programs) ? tx.programs : [];
+          if (!programs.includes(PUMPFUN_PROGRAM_ID)) continue;
+        }
+        const tts: any[] = Array.isArray(tx.tokenTransfers) ? tx.tokenTransfers : [];
+        const m = tts.find((tt: any) => typeof tt?.mint === 'string' && tt.mint.length > 30)?.mint;
+        if (m) return { mint: String(m), sig: String(tx.signature || tx.signatureId || '') };
+      }
+      return undefined;
+    };
+    const chosen = pick(arr) || pick(arr.slice(0, 1)) || undefined;
+    if (!chosen) return;
+    if (lastCreatorMintSig && chosen.sig && lastCreatorMintSig === chosen.sig) return;
+    if (chosen.mint && chosen.mint !== store.getMint()) {
+      console.log(`[auto-track] Detected new mint from ${TRACK_WALLET}: ${chosen.mint}`);
+      await reconcileAndBroadcast(chosen.mint);
+      lastCreatorMintSig = chosen.sig;
+    }
+  } catch (e) {
+    console.warn('[auto-track] poll error', (e as Error).message);
+  }
+}
+
+if (TRACK_WALLET) {
+  setInterval(pollCreatorForLatestMint, 30_000);
+  // try once on startup
+  pollCreatorForLatestMint();
+}
 
 
