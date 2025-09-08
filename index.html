@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PumpPot – Jackpot for Holders</title>
+  <link rel="icon" type="image/png" href="assets/pumppot.png" />
+  <style>
+    :root{
+      /* Fresh minimal palette (less dashboard-y) */
+      --bg: #fbfbf8;             /* soft neutral */
+      --panel: #ffffff;          /* pure white */
+      --panel-2: #f4f3ee;        /* warm neutral */
+      --text: #121512;           /* near-black */
+      --muted: #6a6f69;          /* gentle gray */
+      --brand: #159b52;          /* fresh emerald */
+      --accent: #e7f4ec;         /* subtle emerald wash */
+      --danger: #96421a;         /* muted warning */
+      --success: #167244;        /* confirmation */
+      --line: rgba(0,0,0,.10);
+      --glass: rgba(0,0,0,.03);
+      --shadow: 0 8px 28px rgba(0,0,0,.05);
+      --ring: 0 0 0 3px rgba(21,155,82,.18);
+      --radius: 14px;
+      --gap: 18px;
+    }
+    /* Dark mode removed by request */
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(900px 420px at 90% -10%, rgba(14,122,70,.08), transparent 60%),
+        radial-gradient(640px 360px at -10% 110%, rgba(207,231,217,.22), transparent 60%),
+        var(--bg);
+    }
+    a{color:inherit}
+    .container{max-width:1120px;margin:0 auto;padding:22px}
+    .hero{position:relative;border:0;background:linear-gradient(180deg,var(--panel),var(--panel-2));border-radius:var(--radius);padding:16px 16px;box-shadow:var(--shadow);margin-bottom:var(--gap)}
+    .hero h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px}
+    .hero-sub{color:var(--muted);font-size:13px;margin-bottom:10px}
+    .countdown-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .pill{background:var(--glass);border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+    .progress{height:8px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);overflow:hidden}
+    .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),#1a8f57)}
+
+    /* Big Fee box */
+    .fee-hero{position:relative;background:var(--brand);border-radius:18px;padding:22px 24px;box-shadow:var(--shadow);margin:var(--gap) auto;max-width:720px;text-align:center;border:0}
+    .fee-title{margin:0 0 6px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.9)}
+    .fee-amount{font-size:clamp(40px,6vw,72px);font-weight:900;letter-spacing:.3px;color:#ffffff}
+    .fee-sub{color:rgba(255,255,255,.9);font-size:12px}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.28);z-index:50}
+    .modal.active{display:flex}
+    .modal-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);max-width:680px;width:92%;padding:16px}
+    .modal-card h3{margin:0 0 6px;font-size:18px}
+    .modal-card p{margin:8px 0;color:var(--muted)}
+    .modal-actions{display:flex;justify-content:flex-end;margin-top:10px}
+
+    /* Header */
+    .header{display:flex;align-items:center;gap:16px;justify-content:space-between;padding:12px 0}
+    .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+    .brand-logo{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#ffffff; border:1px solid var(--line); box-shadow:var(--shadow); overflow:hidden}
+    .brand-title{font-weight:700;letter-spacing:.2px;font-size:19px; color:#0f0f0f}
+    .header-right{display:flex;align-items:center;gap:10px}
+    .hotbar{display:flex;align-items:center;gap:8px}
+
+    .btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;transition:.18s; box-shadow: 0 2px 0 rgba(0,0,0,.03)}
+    .btn:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(0,0,0,.08)}
+    .btn:focus{outline:none; box-shadow: var(--shadow), var(--ring)}
+    .btn.primary{background:#ffffff; border:1px solid var(--line)}
+    .btn.gold{background:#0e7a46; color:#ffffff; border: 1px solid rgba(12,40,24,.10)}
+
+    .seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .seg button{border:0;background:transparent;padding:10px 14px;color:var(--muted)}
+    .seg button.active{color:var(--text);background:var(--glass)}
+
+    .network{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:8px 12px;border-radius:12px}
+    .dot{width:8px;height:8px;border-radius:99px;background:#0e7a46;box-shadow:0 0 0 4px rgba(14,122,70,.18)}
+
+    /* Flow layout (non-dashboard) */
+    .grid{display:block;margin-top:14px}
+
+    .card{background:transparent; border:0; border-radius:0; padding:10px 0}
+    .card h2{margin:0 0 8px;font-size:20px;font-weight:800;letter-spacing:.2px}
+    .sub{color:var(--muted);font-size:13px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+    /* Minimal hero (centered) */
+    .mast{display:grid;place-items:center;margin:8px 0 14px}
+    .mast-logo{width:96px;height:96px;border-radius:20px;display:grid;place-items:center;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow); overflow:hidden}
+    .mast-title{margin:10px 0 6px;font-size:44px;line-height:1.1;letter-spacing:.3px;color:var(--brand)}
+    .mast-sub{color:var(--muted);font-size:14px;text-align:center;max-width:680px}
+    .pill.ca{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:999px;font-family:ui-monospace,Consolas,Menlo,monospace}
+    .pill .copy{border:1px solid var(--line);background:var(--panel-2);padding:6px 10px;border-radius:10px;cursor:pointer}
+    .pill .copy:hover{background:#fff}
+
+    /* Pot */
+    .pot{position:relative;display:grid;grid-template-columns: 1fr 1fr; gap:18px;align-items:center}
+    @media (max-width: 980px){ .pot{grid-template-columns:1fr} }
+
+    .cauldron{position:relative;height:220px;background:radial-gradient(60% 80% at 50% 20%, rgba(245,200,67,.28), transparent 50%), linear-gradient(180deg, #1b1d26, #0f1016 60%, #090a0f); border-radius:24px; border:1px solid var(--line); display:grid;place-items:center; overflow:hidden}
+    .bubbles{position:absolute;inset:0;pointer-events:none}
+    .bubble{position:absolute;bottom:-18px;width:10px;height:10px;border-radius:999px;background:rgba(245,200,67,.8);filter:blur(.3px);animation:rise 6s linear infinite;opacity:.85}
+    .bubble:nth-child(2){left:20%;animation-delay:1s}
+    .bubble:nth-child(3){left:35%;width:8px;height:8px;animation-delay:2.2s}
+    .bubble:nth-child(4){left:50%;width:12px;height:12px;animation-delay:3.1s}
+    .bubble:nth-child(5){left:70%;width:9px;height:9px;animation-delay:4.5s}
+    .bubble:nth-child(6){left:85%;width:7px;height:7px;animation-delay:5.4s}
+    @keyframes rise{0%{transform:translateY(0) scale(.9)} 100%{transform:translateY(-260px) scale(1.1);opacity:0}}
+
+    .pot-amount{font-size:42px;font-weight:800;letter-spacing:.5px}
+    .pot-caption{color:var(--muted);font-size:13px;margin-top:6px}
+    .countdown{display:flex;gap:8px;margin-top:12px}
+    .pill{background:var(--glass);border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
+
+    .mini{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:14px}
+    .mini .box{background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px}
+    .label{color:var(--muted);font-size:12px}
+    .value{font-weight:700; font-variant-numeric: tabular-nums}
+
+    /* Token & Odds */
+    .token-box{display:grid; gap:12px}
+    .input{display:flex;gap:8px}
+    input[type="text"], select{width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--panel-2); color:var(--text)}
+    input::placeholder{color:var(--muted)}
+    .help{color:var(--muted);font-size:12px}
+    /* CA + holders row */
+    .caRow{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
+    @media (max-width: 720px){ .caRow{grid-template-columns:1fr} }
+    .metric-box{background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:center}
+
+    .odds{margin-top:6px}
+    .bar{height:10px;border-radius:999px;background:linear-gradient(90deg, var(--brand), #1a8f57); box-shadow: none}
+    .bar-wrap{height:10px;border-radius:999px;background:var(--panel-2); border:1px solid var(--line); overflow:hidden}
+
+    /* Live Holders / Winners */
+    .holders{margin-top:4px; max-height: 460px; overflow:auto}
+    .winners{margin-top:4px; max-height: 460px; overflow:auto}
+    .table{width:100%;border-collapse:collapse}
+    .table th, .table td{padding:10px 10px; border-bottom:1px solid var(--line); text-align:left}
+    .table th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.02em}
+    .table tbody tr:hover{background:var(--glass)}
+    .addr{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);padding:6px 10px;border-radius:999px}
+    .tag{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;line-height:1;border:1px solid var(--line);background:var(--accent);color:var(--text)}
+    .tag.lp{background:#e5f6ed;border-color:rgba(14,122,70,.25)}
+
+    /* Tabs */
+    .tabs{display:flex; gap:8px; margin:10px 0 14px}
+    .tab{padding:8px 12px;border:1px solid var(--line);background:var(--panel-2);border-radius:999px;color:var(--muted);cursor:pointer}
+    .tab.active{color:var(--text);background:var(--glass)}
+
+    /* Footer */
+    .footer{display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px;color:var(--muted);font-size:12px}
+    .links{display:flex;gap:14px;align-items:center}
+
+    /* Utility */
+    .hidden{display:none}
+    .success{color:var(--success)}
+    .danger{color:var(--danger)}
+    .gold{color:var(--brand)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <a class="brand" href="#" aria-label="PumpPot Home">
+        <span class="brand-logo" aria-hidden="true"><img src="assets/pumppot.png" alt="PumpPot" style="width:100%;height:100%;object-fit:cover;border-radius:10px"/></span>
+        <span class="brand-title">PumpPot</span>
+      </a>
+      <div class="header-right hotbar">
+        <div class="network" title="Network">
+          <span class="dot"></span>
+          <span>Solana Mainnet</span>
+        </div>
+        <button id="faqBtn" class="btn primary">FAQ</button>
+        <button id="vrfBtn" class="btn primary">About our VRF</button>
+      </div>
+    </header>
+
+    <!-- FAQ Modal -->
+    <div id="faqModal" class="modal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="faqTitle">
+        <h3 id="faqTitle">FAQ</h3>
+        <p><strong>How often is the jackpot distributed?</strong><br/>Every hour on the hour. The countdown and progress bar show exactly when the next draw occurs.</p>
+        <p><strong>How are entries determined?</strong><br/>Entries are proportional to your on-chain token balance at snapshot time. No tokens are spent to enter.</p>
+        <p><strong>Is the selection provably fair?</strong><br/>Yes. We are integrating on-chain randomness (VRF) and will publish the snapshot hash and selection proof so anyone can verify.</p>
+        <p><strong>Do I need to connect a wallet?</strong><br/>No. This site reads on-chain data and shows odds/holders without requiring a connect.</p>
+        <div class="modal-actions">
+          <button id="faqClose" class="btn primary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VRF Modal -->
+    <div id="vrfModal" class="modal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="vrfTitle">
+        <h3 id="vrfTitle">About our VRF</h3>
+        <p>We use <a href="https://drand.love/" target="_blank" rel="noopener">drand</a>, a public randomness beacon run by the League of Entropy (Cloudflare, EPFL, etc.). Every round publishes a randomness value with a threshold BLS signature, so anyone can verify it.</p>
+        <p><strong>How to verify (quick):</strong></p>
+        <ol>
+          <li>Click the “Verified” link next to a winner to open the drand round (e.g., <a id="vrfExampleRound" href="#" target="_blank" rel="noopener">latest round</a>).</li>
+          <li>Copy the <em>randomness</em> hex shown there (e.g., <code id="vrfExampleRandom">—</code>) and our <em>snapshotHash</em> (<code id="vrfExampleSnap">—</code>).</li>
+          <li>Recompute selection off-chain: parse the ordered holders + weights (eligible only), compute <code>r = BigInt('0x'+randomness) % totalWeight</code>, then walk cumulative weights to find the index where <code>r</code> falls. The winner should match <code id="vrfExampleWinner">—</code>.</li>
+        </ol>
+        <p><strong>Docs:</strong> drand background and verification: <a href="https://docs.drand.love/about/" target="_blank" rel="noopener">drand docs</a>. Group keys and signature format are published for independent verification.</p>
+        <div class="modal-actions">
+          <button id="vrfClose" class="btn primary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minimal centered hero with CA pill -->
+    <section class="mast" aria-labelledby="siteTitle">
+      <div class="mast-logo"><img src="assets/pumppot.png" alt="PumpPot" style="width:100%;height:100%;object-fit:cover;border-radius:20px"/></div>
+      <h1 id="siteTitle" class="mast-title">PumpPot</h1>
+      <p class="mast-sub">Provably-fair hourly draws for token holders. Entries are proportional to on-chain balances. No wallet connection needed.</p>
+      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center">
+        <span class="pill ca" title="Token contract address">
+          <span id="caPill">—</span>
+          <button id="caCopy" class="copy" aria-label="Copy CA">Copy</button>
+        </span>
+      </div>
+    </section>
+
+    <!-- Hero: Hourly draw countdown -->
+    <section class="hero" aria-labelledby="heroTitle">
+      <h1 id="heroTitle">Live Jackpot Draw</h1>
+      <div class="hero-sub">Next distribution occurs on a fixed cadence (testing: every minute). All holders are entered proportionally.</div>
+      <div class="countdown-wrap">
+        <span class="pill">Now: <b id="nowDate">—</b></span>
+        <span class="pill">Next draw at: <b id="nextDate">—</b></span>
+        <span class="pill">Time remaining: <b id="timeLeft">—</b></span>
+      </div>
+      <div class="progress" style="margin-top:10px"><span id="hourProgress" style="width:0%"></span></div>
+    </section>
+
+    <!-- Big Fee box -->
+    <section class="fee-hero" aria-labelledby="feeTitle">
+      <h2 id="feeTitle" class="fee-title">Fees</h2>
+      <div class="fee-amount" id="feeAmount">$0.00</div>
+      <div class="fee-sub">Winnable creator fees (live balance wiring coming soon)</div>
+    </section>
+
+    <!-- Main Grid -->
+    <div class="grid">
+      <!-- Left: Pot + Token + Odds -->
+      <!-- Jackpot hidden per request -->
+
+      <section class="card token-box" aria-labelledby="tokenTitle" style="grid-column: 1 / -1;">
+        <div class="row">
+          <h2 id="tokenTitle">Token Info</h2>
+          <span class="chip"><strong>Status:</strong> <span id="tokenStatus" class="success">Live</span></span>
+        </div>
+        <div class="caRow">
+          <div class="input">
+            <input id="caInput" type="text" spellcheck="false" placeholder="Token address (set via server)" aria-label="Token contract address" readonly />
+          </div>
+          <div class="metric-box">
+            <div class="label">Holders</div>
+            <div class="value" id="holderCount">—</div>
+          </div>
+        </div>
+        <div class="help">Tickets are your <strong>current holding %</strong>. No tokens are spent. Draw uses a verifiable on-chain seed.
+        </div>
+
+        
+      </section>
+
+      <!-- New: Live Holders card (prominent) -->
+      <section class="card" aria-labelledby="holdersTitle">
+        <div class="row"><h2 id="holdersTitle">Live Holders</h2></div>
+        <div class="holders">
+          <table class="table" aria-label="Top holders table">
+            <thead><tr><th>Address</th><th>Balance</th><th>Share</th></tr></thead>
+            <tbody id="holdersBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- New: Winners card (separate, less prominent) -->
+      <section class="card" aria-labelledby="winnersTitle">
+        <div class="row"><h2 id="winnersTitle">Recent Winners</h2><button id="verifyBtn" class="btn primary">How to Verify</button></div>
+        <div class="winners">
+          <table class="table" aria-label="Recent winners table">
+            <thead><tr><th>When</th><th>Winner</th><th>Chance</th><th>Prize</th><th>Draw ID</th></tr></thead>
+            <tbody id="winnersBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Right: Internal Logs only -->
+      <section class="card" aria-labelledby="activityTitle">
+        <div class="row">
+          <h2 id="activityTitle">Internal Logs</h2>
+        </div>
+        <div style="margin-top:8px">
+          <div class="label">Log</div>
+          <div id="log" style="height:220px;overflow:auto;border:1px solid var(--line);background:var(--panel-2);border-radius:12px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
+        </div>
+      </section>
+
+      <!-- Removed explainer; replaced by FAQ modal trigger in header -->
+    </div>
+
+    <footer class="footer">
+      <div>© <span id="year"></span> PumpPot</div>
+      <div class="links">
+        <a href="#" id="tos">Terms</a>
+        <a href="#" id="privacy">Privacy</a>
+        <a href="#" id="docs">Docs</a>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+
+    // ————————————————————————————————
+    // Mock wallet + live demo state (replace with real connectors)
+    // ————————————————————————————————
+    // Wallet connect removed per request
+
+    // ————————————————————————————————
+    // Hourly draw timer (resets at top of hour)
+    // ————————————————————————————————
+    const timeLeftEl = document.getElementById('timeLeft');
+    const hourProgressEl = document.getElementById('hourProgress');
+    const nowDateEl = document.getElementById('nowDate');
+    const nextDateEl = document.getElementById('nextDate');
+    const drawIdEl = document.getElementById('drawId');
+    const seedPrevEl = document.getElementById('seedPrev');
+
+    let sched = { now: Date.now(), intervalMs: 60*1000, nextAt: Date.now() + 60*1000 };
+    async function refreshSchedule(){
+      try{
+        const r = await fetch(`${API_BASE}/schedule`);
+        if(!r.ok) return;
+        const j = await r.json();
+        if (j && typeof j.nextAt === 'number') sched = j;
+      } catch {}
+    }
+    setInterval(refreshSchedule, 15000);
+    refreshSchedule();
+    function tick(){
+      const now = Date.now();
+      const ms = Math.max(0, (sched.nextAt||now) - now);
+      const s = Math.floor(ms/1000);
+      const h = Math.floor(s/3600).toString().padStart(2,'0');
+      const m = Math.floor((s%3600)/60).toString().padStart(2,'0');
+      const ss = (s%60).toString().padStart(2,'0');
+      if (timeLeftEl) timeLeftEl.textContent = `${h}:${m}:${ss}`;
+      if (nowDateEl) nowDateEl.textContent = new Date(now).toLocaleString();
+      if (nextDateEl) nextDateEl.textContent = new Date(sched.nextAt||now).toLocaleString();
+      const elapsed = Math.max(0, (sched.intervalMs||60000) - ms);
+      const pct = Math.max(0, Math.min(100, (elapsed / (sched.intervalMs||60000)) * 100));
+      if (hourProgressEl) hourProgressEl.style.width = `${pct}%`;
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+
+    // ————————————————————————————————
+    // Pot animation (demo growth)
+    // ————————————————————————————————
+    const potAmountEl = document.getElementById('potAmount');
+    const feeAmountEl = document.getElementById('feeAmount');
+    let potCents = 1234567; // $12,345.67
+    if(potAmountEl){
+      setInterval(()=>{
+        potCents += Math.floor(30 + Math.random()*200);
+        potAmountEl.textContent = money(potCents);
+        if (feeAmountEl) feeAmountEl.textContent = money(potCents);
+      }, 1200);
+    }
+
+    // ————————————————————————————————
+    // Token input + external links
+    // ————————————————————————————————
+    const caInput = document.getElementById('caInput');
+    const tokenNameEl = document.getElementById('tokenName');
+    const holderCountEl = document.getElementById('holderCount');
+    const pumpLink = document.getElementById('pumpLink');
+    const faqBtn = document.getElementById('faqBtn');
+    const faqModal = document.getElementById('faqModal');
+    const faqClose = document.getElementById('faqClose');
+    if (faqBtn && faqModal && faqClose){
+      faqBtn.onclick = ()=> faqModal.classList.add('active');
+      faqClose.onclick = ()=> faqModal.classList.remove('active');
+      faqModal.addEventListener('click',(e)=>{ if(e.target===faqModal) faqModal.classList.remove('active'); });
+    }
+    const vrfBtn = document.getElementById('vrfBtn');
+    const vrfModal = document.getElementById('vrfModal');
+    const vrfClose = document.getElementById('vrfClose');
+    if (vrfBtn && vrfModal && vrfClose){
+      vrfBtn.onclick = ()=> vrfModal.classList.add('active');
+      vrfClose.onclick = ()=> vrfModal.classList.remove('active');
+      vrfModal.addEventListener('click',(e)=>{ if(e.target===vrfModal) vrfModal.classList.remove('active'); });
+    }
+    const verifyBtn = document.getElementById('verifyBtn');
+    if (verifyBtn && vrfModal){ verifyBtn.onclick = ()=> vrfModal.classList.add('active'); }
+    // Use relative path; Netlify proxy will forward to Render
+    const API_BASE = '/api';
+    const REFRESH_MS = 15000; // 15s
+
+    // CA pill + copy
+    const caPill = document.getElementById('caPill');
+    const caCopyBtn = document.getElementById('caCopy');
+    const caSolscan = document.getElementById('caSolscan');
+    function updateCAPill(ca){
+      if (!ca) return;
+      if (caPill) caPill.textContent = ca;
+      if (caSolscan) caSolscan.href = `https://solscan.io/token/${ca}`;
+    }
+    if (caCopyBtn){
+      caCopyBtn.onclick = async () => {
+        try{
+          const ca = (caInput?.value || '').trim();
+          if (!ca) return;
+          await navigator.clipboard.writeText(ca);
+          const prev = caCopyBtn.textContent;
+          caCopyBtn.textContent = 'Copied';
+          setTimeout(()=>{ caCopyBtn.textContent = prev || 'Copy'; }, 900);
+        } catch{}
+      };
+    }
+
+    function normalizeMintInput(raw){
+      const s = raw.trim();
+      // Full pump.fun URL support
+      const m = s.match(/pump\.fun\/coin\/([1-9A-HJ-NP-Za-km-z]+)/);
+      if(m) return m[1];
+      // Find a base58-looking substring of typical mint length (43-45 chars). Prefer 44.
+      const candidates = s.match(/[1-9A-HJ-NP-Za-km-z]{40,48}/g) || [];
+      let best = candidates
+        .filter(x => x.length >= 43 && x.length <= 45)
+        .sort((a,b)=> Math.abs(b.length-44) - Math.abs(a.length-44))
+        .pop();
+      if(best){
+        if(best.length > 44) return best.slice(-44);
+        if(best.length < 43) return best;
+        return best;
+      }
+      // Fallback: strip non-base58 and trim to 44 from the end
+      const cleaned = s.replace(/[^1-9A-HJ-NP-Za-km-z]/g, "");
+      return cleaned.length > 44 ? cleaned.slice(-44) : cleaned;
+    }
+
+    async function autoLoadMint(){
+      const url = new URL(location.href);
+      const qMint = url.searchParams.get('mint');
+      if (qMint) {
+        const ca = normalizeMintInput(qMint);
+        if (ca) {
+          caInput.value = ca;
+          caInput.setAttribute('readonly','readonly');
+          await loadMint(ca);
+          if (tokenNameEl) tokenNameEl.textContent = `Token ${ca.slice(0,4)}…${ca.slice(-4)}`;
+          updateCAPill(ca);
+          if (pumpLink){
+            pumpLink.href = `https://pump.fun/coin/${ca}`;
+            pumpLink.textContent = `Open ${ca.slice(0,4)}… on pump.fun ↗`;
+          }
+          log(`Loaded token ${ca}`);
+          return;
+        }
+      }
+      // fallback to server active or DEFAULT_MINT
+      try{
+        const s = await fetch(`${API_BASE}/holders/active`).then(r=>r.json());
+        if(s && s.mint){
+          caInput.value = s.mint;
+          caInput.setAttribute('readonly','readonly');
+          if (tokenNameEl) tokenNameEl.textContent = `Token ${s.mint.slice(0,4)}…${s.mint.slice(-4)}`;
+          updateCAPill(s.mint);
+          if (pumpLink){
+            pumpLink.href = `https://pump.fun/coin/${s.mint}`;
+            pumpLink.textContent = `Open ${s.mint.slice(0,4)}… on pump.fun ↗`;
+          }
+          await loadMint(s.mint);
+        }
+      } catch (e){ console.warn('autoLoadMint error', e); }
+    }
+
+    // Auto-switch when DEFAULT_MINT changes server-side (no ?mint override)
+    async function watchActiveMint(){
+      const url = new URL(location.href);
+      if (url.searchParams.get('mint')) return; // respect explicit override
+      try{
+        const s = await fetch(`${API_BASE}/holders/active`).then(r=>r.json());
+        if(s && s.mint){
+          const current = caInput.value.trim();
+          if (current !== s.mint){
+            log(`Active mint changed → switching to ${s.mint.slice(0,4)}…${s.mint.slice(-4)}`);
+            caInput.value = s.mint;
+            updateCAPill(s.mint);
+            await loadMint(s.mint);
+          }
+        }
+      } catch {}
+    }
+    setInterval(watchActiveMint, REFRESH_MS);
+
+    // ————————————————————————————————
+    // Tabs removed; separate cards are shown
+
+    // ————————————————————————————————
+    // Live holders (wired to backend)
+    // ————————————————————————————————
+    const holdersBody = document.getElementById('holdersBody');
+    let decimals = 0;
+    let totalRaw = 0n;
+    let holders = new Map(); // owner -> raw(BigInt)
+    let es; // EventSource
+    let pollTimer; // interval id
+
+    function toPct(raw){
+      const denom = totalRaw === 0n ? 1n : totalRaw;
+      const pct = Number((raw * 10000n) / denom) / 100;
+      return pct;
+    }
+
+    function renderHolders(){
+      const arr = [...holders.entries()].map(([owner, raw]) => ({ owner, raw }))
+        .sort((a,b)=> Number(b.raw - a.raw));
+      totalRaw = arr.reduce((s,r)=> s + r.raw, 0n);
+      holderCountEl.textContent = arr.length.toLocaleString();
+      holdersBody.innerHTML = '';
+      // detect top holder and mark as LP if >20%
+      let lpOwner = null;
+      if (arr.length) {
+        const topPct = toPct(arr[0].raw);
+        if (topPct > 20) lpOwner = arr[0].owner;
+      }
+      arr.forEach(({owner, raw}) => {
+        const tr = document.createElement('tr');
+        const pct = toPct(raw);
+        const display = Number(raw) / (10 ** (decimals || 0));
+        const solscan = `https://solscan.io/account/${owner}`;
+        const lpBadge = (lpOwner && owner === lpOwner) ? `<span class="tag lp" title=\"Likely liquidity pool (>20% supply)\">Liquidity Pool</span>` : '';
+        tr.innerHTML = `
+          <td class="addr"><a href="${solscan}" target="_blank" rel="noopener">${short(owner)}</a> ${lpBadge}</td>
+          <td>${display.toLocaleString()}</td>
+          <td style="width:40%">
+            <div class="bar-wrap" aria-label="holder share bar"><div class="bar" style="width:${pct.toFixed(2)}%"></div></div>
+            <div class="label">${pct.toFixed(2)}%</div>
+          </td>`;
+        holdersBody.appendChild(tr);
+      });
+      recalc();
+    }
+
+    async function loadMint(mint){
+      try{
+        if (pollTimer) { clearInterval(pollTimer); pollTimer = undefined; }
+        const res = await fetch(`${API_BASE}/holders/full/${mint}`);
+        if(!res.ok){
+          log(`Failed to get holders for ${mint} (${res.status})`);
+          return;
+        }
+        const s = await res.json();
+        if(!s || !Array.isArray(s.holders)){
+          log('Malformed holders response');
+          return;
+        }
+        decimals = s.decimals || 0;
+        totalRaw = BigInt(s.totalRaw || '0');
+        holders = new Map(s.holders.map(h=>[h.owner, BigInt(h.raw)]));
+        renderHolders();
+        log(`Snapshot loaded (${s.holders.length} holders)`);
+        console.log('[holders] snapshot size', s.holders.length);
+        // SSE removed per simplification
+
+        // periodic full snapshot refresh
+        pollTimer = setInterval(async () => {
+          try{
+            const res2 = await fetch(`${API_BASE}/holders/full/${mint}`);
+            if(!res2.ok) return;
+            const snap = await res2.json();
+            if(!snap || !Array.isArray(snap.holders)) return;
+            decimals = snap.decimals || decimals;
+            totalRaw = BigInt(snap.totalRaw || '0');
+            holders = new Map(snap.holders.map(h=>[h.owner, BigInt(h.raw)]));
+            renderHolders();
+            log(`Refreshed (${snap.holders.length} holders)`);
+            console.log('[holders] refreshed size', snap.holders.length);
+          } catch {}
+        }, REFRESH_MS);
+      } catch(err){
+        console.error(err);
+        log('Failed to load holders from server');
+      }
+    }
+
+    // ————————————————————————————————
+    // Odds calculation
+    // ————————————————————————————————
+    const oddsPctEl = document.getElementById('oddsPct');
+    const oddsBarEl = document.getElementById('oddsBar');
+
+    function recalc(){
+      // Odds UI removed; keep no-op to avoid errors
+      setOdds(0);
+    }
+
+    function setOdds(pct){
+      if (!oddsPctEl || !oddsBarEl) return;
+      oddsPctEl.textContent = `${pct.toFixed(2)}%`;
+      oddsBarEl.style.width = `${pct}%`;
+    }
+
+    // ————————————————————————————————
+    // Winners (demo)
+    // ————————————————————————————————
+    const winnersBody = document.getElementById('winnersBody');
+    const lastWinnerEl = document.getElementById('lastWinner');
+    const WINNERS_KEY = 'pp_winners';
+    let winnersLog = [];
+
+    function loadWinners(){
+      try { winnersLog = JSON.parse(localStorage.getItem(WINNERS_KEY) || '[]'); }
+      catch { winnersLog = []; }
+    }
+    function saveWinners(){
+      try { localStorage.setItem(WINNERS_KEY, JSON.stringify(winnersLog.slice(0,500))); } catch {}
+    }
+    function renderWinners(){
+      if(!winnersBody) return;
+      winnersBody.innerHTML = '';
+      winnersLog.forEach(w => {
+        const tr = document.createElement('tr');
+        const when = new Date(w.ts || Date.now()).toLocaleString();
+        const proof = w.proofUrl ? `<a href="${w.proofUrl}" target="_blank" rel="noopener">Verified ↗</a>` : '';
+        const solscan = `https://solscan.io/account/${w.addr}`;
+        const chance = (typeof w.winnerPct === 'number' ? w.winnerPct : 0).toFixed(2) + '%';
+        tr.innerHTML = `<td>${when}</td><td class="addr"><a href="${solscan}" target="_blank" rel="noopener">${w.addr}</a></td><td>${chance}</td><td>$${Number(w.prizeUsd||0).toLocaleString(undefined,{maximumFractionDigits:2})} ${proof}</td><td>#${w.drawId||'-'}</td>`;
+        winnersBody.appendChild(tr);
+      });
+    }
+    function pickWinner(){
+      if(!holders.length){ return; }
+      const total = holders.reduce((s,h)=>s+h.bal,0);
+      const r = Math.random()*total;
+      let acc=0, win=null;
+      for(const h of holders){ acc += h.bal; if(r<=acc){ win=h; break; } }
+      const prize = potCents/100;
+      const id = Math.floor(Math.random()*1e9);
+      if (lastWinnerEl) lastWinnerEl.textContent = short(win.addr);
+      // persist log
+      winnersLog.unshift({ ts: Date.now(), addr: win.addr, prizeUsd: prize, drawId: id });
+      saveWinners();
+      renderWinners();
+      drawIdEl.textContent = `#${id}`;
+      seedPrevEl.textContent = hashPreview(id.toString());
+      log(`Winner selected: ${short(win.addr)} • Prize $${prize.toLocaleString()}`);
+    }
+
+    // Poll backend for latest verified draw and append to winners log
+    async function pollLatestDraw(){
+      try{
+        const res = await fetch(`${API_BASE}/draw/latest`);
+        if(!res.ok) return;
+        const j = await res.json();
+        if(!j.ok) return;
+        const exists = winnersLog.find(x => String(x.drawId) === String(j.drawId));
+        if(!exists){
+          winnersLog.unshift({
+            ts: Date.now(),
+            addr: j.winner,
+            winnerPct: j.winnerPct,
+            prizeUsd: (potCents||0)/100,
+            drawId: j.drawId,
+            proofUrl: j.proofUrl
+          });
+          saveWinners();
+          renderWinners();
+          log(`Verified winner: ${short(j.winner)} • Proof: ${j.proofUrl||''}`);
+        }
+      } catch{}
+    }
+    setInterval(pollLatestDraw, 7000);
+
+    // ————————————————————————————————
+    // Logger
+    // ————————————————————————————————
+    const logEl = document.getElementById('log');
+    function log(msg){
+      const p = document.createElement('div');
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.prepend(p);
+    }
+
+    // ————————————————————————————————
+    // Utils
+    // ————————————————————————————————
+    function money(cents){
+      return `$${(cents/100).toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}`;
+    }
+    function short(a){ return a.slice(0,4)+"…"+a.slice(-4); }
+    function formatNumber(x){ return x.toLocaleString(); }
+    function pseudoAddr(seed, i){
+      const b = btoa(unescape(encodeURIComponent(seed+':'+i))).replace(/[^A-Za-z0-9]/g,'');
+      return (b+"11111111111111111111111111111111").slice(0,44);
+    }
+    function hashPreview(s){
+      let h=0; for(let i=0;i<s.length;i++){ h=((h<<5)-h)+s.charCodeAt(i); h|=0; }
+      return '0x'+(h>>>0).toString(16).padStart(8,'0')+'…';
+    }
+
+    // ————————————————————————————————
+    // Init with a demo CA
+    // ————————————————————————————————
+    document.getElementById('year').textContent = new Date().getFullYear();
+    loadWinners();
+    renderWinners();
+    autoLoadMint().then(() => log('Auto-load init complete'));
+  </script>
+</body>
+</html>

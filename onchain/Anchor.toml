@@ -1,0 +1,13 @@
+[programs.localnet]
+pumppot_vrf = "PmpVRF1111111111111111111111111111111111111"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Devnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "anchor test"
+

@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "programs/pumppot_vrf",
+]
+
+[profile.release]
+opt-level = "s"
+overflow-checks = true
+

@@ -1,0 +1,14 @@
+{
+  "name": "pumppot-onchain",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start-draw": "node scripts/start_draw.js",
+    "fulfill-draw": "node scripts/fulfill_draw.js"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/web3.js": "^1.95.1"
+  }
+}
+
