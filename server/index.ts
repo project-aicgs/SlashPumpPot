@@ -30,6 +30,22 @@ await store.load();
 const app = Fastify({ logger: false });
 await app.register(cors, { origin: true });
 
+// Root health/info endpoint
+app.get("/", async (_req, reply) => {
+  reply.send({
+    ok: true,
+    service: "PumpPot holders",
+    endpoints: [
+      "/schedule",
+      "/holders/active",
+      "/holders/:mint",
+      "/holders/full/:mint",
+      "/holders/stream",
+      "/draw/latest"
+    ]
+  });
+});
+
 // SSE clients
 type Client = { id: number; res: any };
 const clients = new Set<Client>();

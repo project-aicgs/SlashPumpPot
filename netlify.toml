@@ -4,7 +4,13 @@
 # Proxy API calls from the static site to the Render backend
 [[redirects]]
   from = "/api/*"
-  to = "https://pump-pot.onrender.com"
+  to = "https://pump-pot.onrender.com/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api"
+  to = "https://pump-pot.onrender.com/"
   status = 200
   force = true
 
