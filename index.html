@@ -366,16 +366,17 @@
     // ————————————————————————————————
     // Pot animation (demo growth)
     // ————————————————————————————————
-    const potAmountEl = document.getElementById('potAmount');
     const feeAmountEl = document.getElementById('feeAmount');
-    let potCents = 1234567; // $12,345.67
-    if(potAmountEl){
-      setInterval(()=>{
-        potCents += Math.floor(30 + Math.random()*200);
-        potAmountEl.textContent = money(potCents);
-        if (feeAmountEl) feeAmountEl.textContent = money(potCents);
-      }, 1200);
+    async function refreshFees(){
+      try{
+        const r = await fetch(`${API_BASE}/fees`);
+        if(!r.ok) return;
+        const j = await r.json();
+        if (feeAmountEl && typeof j?.sol === 'number') feeAmountEl.textContent = `$${j.sol.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}`;
+      } catch{}
     }
+    setInterval(refreshFees, 5000);
+    refreshFees();
 
     // ————————————————————————————————
     // Token input + external links

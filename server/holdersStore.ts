@@ -7,7 +7,7 @@ export class HoldersStore {
   private decimals = 0;
   private mint = "";
 
-  constructor(private persistPath = ".holders.json") {}
+  constructor(private persistPath = process.env.DATA_DIR ? `${process.env.DATA_DIR}/holders.json` : ".holders.json") {}
 
   setMint(mint: string, decimals: number) {
     this.mint = mint;

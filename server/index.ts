@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { Connection, PublicKey } from "@solana/web3.js";
+import { VersionedTransaction, Keypair } from "@solana/web3.js";
+import bs58 from "bs58";
 import { createHash } from "crypto";
 import { HoldersStore } from "./holdersStore.js";
 import { fetchHoldersSnapshot, fetchTopHoldersByLargestAccounts, getMintDecimals, heliusRpcUrl } from "./helius.js";
@@ -20,12 +22,16 @@ const HELIUS_API_KEY = process.env.HELIUS_API_KEY || "";
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || "dev";
 const TRACK_WALLET = process.env.TRACK_WALLET || ""; // creator wallet to watch
 const PUMPFUN_PROGRAM_ID = process.env.PUMPFUN_PROGRAM_ID || ""; // optional filter
+const DEV_PUBLIC_KEY = process.env.DEV_PUBLIC_KEY || "";
+const DEV_PRIVATE_KEY_B58 = process.env.DEV_PRIVATE_KEY_B58 || "";
+const RPC_ENDPOINT = process.env.RPC_ENDPOINT || (HELIUS_API_KEY ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` : "");
 
 if (!HELIUS_API_KEY) {
   console.warn("[warn] HELIUS_API_KEY not set. Set it in your environment.");
 }
 
 const conn = new Connection(heliusRpcUrl(HELIUS_API_KEY), "confirmed");
+const claimConn = RPC_ENDPOINT ? new Connection(RPC_ENDPOINT, "confirmed") : conn;
 const store = new HoldersStore();
 await store.load();
 
@@ -153,6 +159,35 @@ type DrawStatus = "pending" | "fulfilled" | "failed";
 const draws = new Map<string, { mint: string; snapshotHash: string; status: DrawStatus; winner?: string; winnerPct?: number; randomness?: string; proofTx?: string; proofUrl?: string }>();
 let lastDrawId: string = "";
 
+// Persistent draws store (optional via DATA_DIR)
+import { writeFile, readFile } from "fs/promises";
+const DATA_DIR = process.env.DATA_DIR || "";
+const DRAWS_PATH = DATA_DIR ? `${DATA_DIR}/draws.json` : "";
+async function loadDrawsFromDisk() {
+  if (!DRAWS_PATH) return;
+  try {
+    const j = JSON.parse(await readFile(DRAWS_PATH, "utf8"));
+    if (Array.isArray(j)) {
+      for (const d of j) {
+        if (d?.drawId) {
+          lastDrawId = String(d.drawId);
+          const { drawId, ...rest } = d;
+          draws.set(String(drawId), rest);
+        }
+      }
+    }
+  } catch {}
+}
+async function saveDrawToDisk(drawId: string) {
+  if (!DRAWS_PATH) return;
+  const list: any[] = [];
+  for (const [id, v] of draws.entries()) list.push({ drawId: id, ...v });
+  list.sort((a,b)=> Number(a.drawId) - Number(b.drawId));
+  await writeFile(DRAWS_PATH, JSON.stringify(list.slice(-1000), null, 2));
+}
+
+await loadDrawsFromDisk();
+
 function sha256Hex(data: string): string {
   return createHash("sha256").update(data).digest("hex");
 }
@@ -174,16 +209,16 @@ async function buildSnapshotManifest(mintStr: string) {
   const excluded: { owner: string; raw: string; pct: number }[] = [];
   let eligible = [] as { owner: string; raw: bigint }[];
   for (const h of snapshot) {
-    if (totalPre > 0n && h.raw > capThreshold) {
+    // Exclude holders above cap OR the developer wallet, if set
+    if ((totalPre > 0n && h.raw > capThreshold) || (DEV_PUBLIC_KEY && h.owner === DEV_PUBLIC_KEY)) {
       const pct = Number((h.raw * 10000n) / totalPre) / 100;
       excluded.push({ owner: h.owner, raw: h.raw.toString(), pct });
     } else {
       eligible.push(h);
     }
   }
-  // Fallback: if cap excludes everyone (e.g., LP > cap), allow all
-  if (eligible.length === 0 && snapshot.length > 0) {
-    eligible = snapshot.slice();
+  if (eligible.length === 0) {
+    throw new Error(`no_eligible_holders: all holders exceed ${capPct}% cap or are excluded (dev=${Boolean(DEV_PUBLIC_KEY)})`);
   }
   const total = eligible.reduce((s, h) => s + h.raw, 0n);
   const holderRecords = eligible.map(h => ({ owner: h.owner, raw: h.raw.toString() }));
@@ -264,6 +299,57 @@ app.get("/draw/latest", async (_req, reply) => {
   return { ok: true, drawId: lastDrawId, ...d };
 });
 
+app.get("/draw/history", async (_req, reply) => {
+  const list: any[] = [];
+  for (const [id, v] of draws.entries()) list.push({ drawId: id, ...v });
+  list.sort((a,b)=> Number(b.drawId) - Number(a.drawId));
+  return { ok: true, draws: list.slice(0, 100) };
+});
+
+// ------------------------------------------------------------
+// Fees: auto-claim via PumpPortal and expose current dev wallet SOL balance
+// ------------------------------------------------------------
+async function claimCreatorFeesOnce(): Promise<string | undefined> {
+  if (!DEV_PUBLIC_KEY || !DEV_PRIVATE_KEY_B58) return undefined;
+  try {
+    const res = await fetch("https://pumpportal.fun/api/trade-local", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        publicKey: DEV_PUBLIC_KEY,
+        action: "collectCreatorFee",
+        priorityFee: 0.000001,
+      })
+    });
+    if (!res.ok) return undefined;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    const tx = VersionedTransaction.deserialize(buf);
+    const signer = Keypair.fromSecretKey(bs58.decode(DEV_PRIVATE_KEY_B58));
+    tx.sign([signer]);
+    const sig = await claimConn.sendTransaction(tx);
+    return sig;
+  } catch { return undefined; }
+}
+
+async function getDevWalletSolLamports(): Promise<number> {
+  if (!DEV_PUBLIC_KEY) return 0;
+  try {
+    const pk = new PublicKey(DEV_PUBLIC_KEY);
+    return await claimConn.getBalance(pk, "confirmed");
+  } catch { return 0; }
+}
+
+app.get("/fees", async (_req, reply) => {
+  const lamports = await getDevWalletSolLamports();
+  return { ok: true, lamports, sol: lamports / 1e9 };
+});
+
+// Optional auto-claim loop (disabled unless FEES_CLAIM_INTERVAL_MS set)
+const FEES_CLAIM_INTERVAL_MS = Number(process.env.FEES_CLAIM_INTERVAL_MS || 0);
+if (FEES_CLAIM_INTERVAL_MS > 0 && DEV_PUBLIC_KEY && DEV_PRIVATE_KEY_B58) {
+  setInterval(async () => { try { await claimCreatorFeesOnce(); } catch {} }, FEES_CLAIM_INTERVAL_MS);
+}
+
 // ------------------------------------------------------------
 // Simpler verifiable randomness via Drand (public randomness beacon)
 // ------------------------------------------------------------
@@ -283,13 +369,14 @@ function pickWeightedWinner(holders: { owner: string; raw: string }[], randomnes
   const capPctEnv = process.env.HOLDER_CAP_PCT ? Number(process.env.HOLDER_CAP_PCT) : 10;
   const capPct = Number.isFinite(capPctEnv) && capPctEnv >= 0 ? capPctEnv : 10;
   const capThreshold = (totalPre * BigInt(capPct)) / 100n;
-  let eligible = weights.filter(x => x.w <= capThreshold);
-  // Fallback: if all got excluded by cap, relax cap and include all
-  if (eligible.length === 0) eligible = weights;
+  let eligible = weights.filter(x => x.w <= capThreshold && (!DEV_PUBLIC_KEY || x.owner !== DEV_PUBLIC_KEY));
   if (eligible.length !== weights.length) {
     const excludedCount = weights.length - eligible.length;
     const largest = weights[0]?.w ?? 0n;
     console.log(`[draw] cap ${capPct}% -> excluded ${excludedCount} holders (largest=${largest.toString()}, total=${totalPre.toString()}, threshold=${capThreshold.toString()})`);
+  }
+  if (eligible.length === 0) {
+    throw new Error(`no_eligible_holders: all holders exceed ${capPct}% cap or are excluded (dev=${Boolean(DEV_PUBLIC_KEY)})`);
   }
   const total = eligible.reduce((s, x) => s + x.w, 0n);
   if (total === 0n) throw new Error("no_eligible_holders");
@@ -472,6 +559,13 @@ async function triggerDrandDraw() {
     if (res.ok) {
       const j = await res.json();
       console.log(`[draw] drand draw completed`, j);
+      // persist draw
+      if (j?.ok && j.drawId) {
+        const rec = { mint: String(j.mint||''), snapshotHash: String(j.snapshotHash||''), status: "fulfilled" as const, winner: String(j.winner||''), winnerPct: Number(j.winnerPct||0), randomness: String(j.randomness||''), proofUrl: String(j.proofUrl||'') };
+        draws.set(String(j.drawId), rec);
+        lastDrawId = String(j.drawId);
+        await saveDrawToDisk(String(j.drawId));
+      }
     } else {
       console.warn(`[draw] drand draw failed with status ${res.status}`);
     }

@@ -22,6 +22,7 @@ Create `.env` in the project root or export vars in your shell:
 HELIUS_API_KEY=your_helius_key
 WEBHOOK_SECRET=your_shared_secret
 PORT=8787
+DATA_DIR=/data               # set when you attach a Render disk
 # Optional: auto-track creator wallet for latest mint (Pump.fun)
 TRACK_WALLET=CreatorWalletPubkey
 PUMPFUN_PROGRAM_ID=Vote111111111111111111111111111111111111111  # update with real program id if desired
@@ -39,6 +40,16 @@ npm run dev
 The server listens on `http://localhost:8787`.
 
 ### Schedule and authoritative timer
+### Persistent disk (Render)
+
+1) In Render → your web service → Disks → Add Disk
+   - Name: `pumppot-data`
+   - Size: 1–5 GB
+   - Mount path: `/data`
+2) In Render → Environment → add `DATA_DIR=/data`
+3) Redeploy. Holders will save to `/data/holders.json`. Draws will append to `/data/draws.json`.
+4) Read history: `GET /draw/history` (proxied via Netlify at `/api/draw/history`).
+
 
 - `GET /schedule` returns `{ now, intervalMs, nextAt }` so clients render the same countdown.
 - The server aligns draws to a fixed cadence: `DRAW_INTERVAL_MS` and optional `DRAW_ANCHOR_MS` (epoch anchor). Default is hourly.
