@@ -660,16 +660,15 @@
       const r = Math.random()*total;
       let acc=0, win=null;
       for(const h of holders){ acc += h.bal; if(r<=acc){ win=h; break; } }
-      const prize = potCents/100;
+      const prize = 0; // no client-side prize calc
       const id = Math.floor(Math.random()*1e9);
       if (lastWinnerEl) lastWinnerEl.textContent = short(win.addr);
-      // persist log
       winnersLog.unshift({ ts: Date.now(), addr: win.addr, prizeUsd: prize, drawId: id });
       saveWinners();
       renderWinners();
       drawIdEl.textContent = `#${id}`;
       seedPrevEl.textContent = hashPreview(id.toString());
-      log(`Winner selected: ${short(win.addr)} • Prize $${prize.toLocaleString()}`);
+      log(`Winner selected: ${short(win.addr)}`);
     }
 
     // Poll backend for latest verified draw and append to winners log
@@ -685,7 +684,7 @@
             ts: Date.now(),
             addr: j.winner,
             winnerPct: j.winnerPct,
-            prizeUsd: (potCents||0)/100,
+            prizeUsd: 0,
             drawId: j.drawId,
             proofUrl: j.proofUrl
           });
