@@ -428,7 +428,7 @@ setInterval(async () => {
 // ------------------------------------------------------------
 // Authoritative schedule + automatic drand draw
 // ------------------------------------------------------------
-const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60 * 60 * 1000);
+const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60 * 1000);
 const DRAW_ANCHOR_MS = Number(process.env.DRAW_ANCHOR_MS || 0); // epoch anchor; set to an exact hour start for hourly cadence
 
 function getNextBoundary(nowMs: number): number {
