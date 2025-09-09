@@ -341,13 +341,34 @@ async function getDevWalletSolLamports(): Promise<number> {
 
 app.get("/fees", async (_req, reply) => {
   const lamports = await getDevWalletSolLamports();
-  return { ok: true, lamports, sol: lamports / 1e9 };
+  const sol = lamports / 1e9;
+  const priceUsd = await getSolUsdPrice();
+  const usd = sol * priceUsd;
+  return { ok: true, lamports, sol, priceUsd, usd };
 });
 
 // Optional auto-claim loop (disabled unless FEES_CLAIM_INTERVAL_MS set)
 const FEES_CLAIM_INTERVAL_MS = Number(process.env.FEES_CLAIM_INTERVAL_MS || 0);
 if (FEES_CLAIM_INTERVAL_MS > 0 && DEV_PUBLIC_KEY && DEV_PRIVATE_KEY_B58) {
   setInterval(async () => { try { await claimCreatorFeesOnce(); } catch {} }, FEES_CLAIM_INTERVAL_MS);
+}
+
+// Cached SOL/USD price (Jupiter price API)
+let _priceCache = { ts: 0, price: 0 } as { ts: number; price: number };
+async function getSolUsdPrice(): Promise<number> {
+  const now = Date.now();
+  if (now - _priceCache.ts < 60_000 && _priceCache.price > 0) return _priceCache.price;
+  try {
+    const res = await fetch("https://price.jup.ag/v6/price?ids=SOL");
+    if (!res.ok) throw new Error(String(res.status));
+    const j: any = await res.json();
+    const p = Number(j?.data?.SOL?.price || 0);
+    if (Number.isFinite(p) && p > 0) {
+      _priceCache = { ts: now, price: p };
+      return p;
+    }
+  } catch {}
+  return _priceCache.price || 0;
 }
 
 // ------------------------------------------------------------
