@@ -368,6 +368,17 @@ async function getSolUsdPrice(): Promise<number> {
       return p;
     }
   } catch {}
+  // Fallback: CoinGecko
+  try {
+    const res2 = await fetch("https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd");
+    if (!res2.ok) throw new Error(String(res2.status));
+    const j2: any = await res2.json();
+    const p2 = Number(j2?.solana?.usd || 0);
+    if (Number.isFinite(p2) && p2 > 0) {
+      _priceCache = { ts: now, price: p2 };
+      return p2;
+    }
+  } catch {}
   return _priceCache.price || 0;
 }
 

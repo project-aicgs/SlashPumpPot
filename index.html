@@ -372,7 +372,12 @@
         const r = await fetch(`${API_BASE}/fees`);
         if(!r.ok) return;
         const j = await r.json();
-        if (feeAmountEl && typeof j?.usd === 'number') feeAmountEl.textContent = `$${j.usd.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        if (!feeAmountEl) return;
+        if (typeof j?.usd === 'number' && j.priceUsd > 0) {
+          feeAmountEl.textContent = `$${j.usd.toLocaleString(undefined,{minimumFractionDigits:2, maximumFractionDigits:2})}`;
+        } else if (typeof j?.sol === 'number') {
+          feeAmountEl.textContent = `${j.sol.toFixed(4)} SOL`;
+        }
       } catch{}
     }
     setInterval(refreshFees, 5000);
