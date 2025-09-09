@@ -395,6 +395,29 @@ app.post("/webhooks/creator", async (req, reply) => {
   }
 });
 
+// Admin: set or clear the active mint (requires WEBHOOK_SECRET via query)
+app.post("/admin/active_mint", async (req, reply) => {
+  const url = req.raw.url || "";
+  const urlSecret = url.includes("secret=") ? url.split("secret=")[1].split("&")[0] : undefined;
+  if (urlSecret !== WEBHOOK_SECRET) return reply.status(403).send({ ok: false });
+  try {
+    const body = (req.body || {}) as any;
+    const mint = typeof body.mint === 'string' ? body.mint.trim() : '';
+    if (!mint) {
+      // Clear active state
+      store.setMint("", 0);
+      store.setSnapshot([]);
+      await store.save();
+      return { ok: true, cleared: true };
+    }
+    await reconcileAndBroadcast(mint);
+    return { ok: true, mint };
+  } catch (e) {
+    reply.status(500);
+    return { ok: false, error: String((e as Error).message || e) };
+  }
+});
+
 setInterval(async () => {
   if (!store.getMint()) return;
   try { await reconcileAndBroadcast(store.getMint()); } catch {}
