@@ -172,7 +172,7 @@ async function buildSnapshotManifest(mintStr: string) {
   // threshold = floor(total * capPct / 100)
   const capThreshold = totalPre === 0n ? 0n : (totalPre * BigInt(capPct)) / 100n;
   const excluded: { owner: string; raw: string; pct: number }[] = [];
-  const eligible = [] as { owner: string; raw: bigint }[];
+  let eligible = [] as { owner: string; raw: bigint }[];
   for (const h of snapshot) {
     if (totalPre > 0n && h.raw > capThreshold) {
       const pct = Number((h.raw * 10000n) / totalPre) / 100;
@@ -180,6 +180,10 @@ async function buildSnapshotManifest(mintStr: string) {
     } else {
       eligible.push(h);
     }
+  }
+  // Fallback: if cap excludes everyone (e.g., LP > cap), allow all
+  if (eligible.length === 0 && snapshot.length > 0) {
+    eligible = snapshot.slice();
   }
   const total = eligible.reduce((s, h) => s + h.raw, 0n);
   const holderRecords = eligible.map(h => ({ owner: h.owner, raw: h.raw.toString() }));
@@ -279,7 +283,9 @@ function pickWeightedWinner(holders: { owner: string; raw: string }[], randomnes
   const capPctEnv = process.env.HOLDER_CAP_PCT ? Number(process.env.HOLDER_CAP_PCT) : 10;
   const capPct = Number.isFinite(capPctEnv) && capPctEnv >= 0 ? capPctEnv : 10;
   const capThreshold = (totalPre * BigInt(capPct)) / 100n;
-  const eligible = weights.filter(x => x.w <= capThreshold);
+  let eligible = weights.filter(x => x.w <= capThreshold);
+  // Fallback: if all got excluded by cap, relax cap and include all
+  if (eligible.length === 0) eligible = weights;
   if (eligible.length !== weights.length) {
     const excludedCount = weights.length - eligible.length;
     const largest = weights[0]?.w ?? 0n;
@@ -479,7 +485,11 @@ function scheduleNextDrawTick() {
   const nextAt = getNextBoundary(now);
   const delay = Math.max(0, nextAt - now + 250);
   setTimeout(async () => {
-    await triggerDrandDraw();
+    try {
+      await triggerDrandDraw();
+    } catch (e) {
+      console.warn('[draw] scheduled trigger failed', (e as Error).message);
+    }
     scheduleNextDrawTick();
   }, delay);
 }
