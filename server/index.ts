@@ -101,8 +101,6 @@ app.get("/holders/:mint", async (req, reply) => {
 });
 
 app.get("/holders/active", async (req, reply) => {
-  const envMint = process.env.DEFAULT_MINT;
-  if (envMint) return { mint: envMint };
   const current = store.getMint();
   if (current) return { mint: current };
   reply.status(404);
@@ -302,7 +300,7 @@ app.post("/draw/start_drand", async (req, reply) => {
   let mint = String(body.mint || "");
   const drawId = String(body.drawId || `${Date.now()}`);
   if (!mint) {
-    mint = store.getMint() || process.env.DEFAULT_MINT || "";
+    mint = store.getMint() || "";
   }
   if (!mint) return reply.status(400).send({ ok: false, error: "missing_mint" });
   try {
@@ -384,6 +382,7 @@ app.post("/webhooks/creator", async (req, reply) => {
     }
 
     if (foundMint) {
+      console.log(`[creator-webhook] switching active mint -> ${foundMint}`);
       await reconcileAndBroadcast(foundMint);
     } else {
       // Fallback: run the poller once to discover latest
@@ -401,15 +400,7 @@ setInterval(async () => {
   try { await reconcileAndBroadcast(store.getMint()); } catch {}
 }, 10 * 60 * 1000);
 
-// Optional: auto-monitor a default mint from env on startup
-const DEFAULT_MINT = process.env.DEFAULT_MINT;
-if (DEFAULT_MINT) {
-  try {
-    await reconcileAndBroadcast(DEFAULT_MINT);
-  } catch (e) {
-    console.warn(`[warn] Failed to preload DEFAULT_MINT ${DEFAULT_MINT}:`, (e as Error).message);
-  }
-}
+// No DEFAULT_MINT preload; active mint is set dynamically via webhook/auto-track
 
 // ------------------------------------------------------------
 // Authoritative schedule + automatic drand draw
@@ -441,7 +432,7 @@ app.post("/draw/trigger", async (req, reply) => {
 
 async function triggerDrandDraw() {
   try {
-    const activeMint = store.getMint() || process.env.DEFAULT_MINT;
+    const activeMint = store.getMint();
     if (!activeMint) return;
     const drawId = `${Date.now()}`;
     const res = await fetch(`http://localhost:${PORT}/draw/start_drand`, {

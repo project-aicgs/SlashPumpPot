@@ -468,7 +468,7 @@
           return;
         }
       }
-      // fallback to server active or DEFAULT_MINT
+      // fallback to server active only
       try{
         const s = await fetch(`${API_BASE}/holders/active`).then(r=>r.json());
         if(s && s.mint){
@@ -481,6 +481,14 @@
             pumpLink.textContent = `Open ${s.mint.slice(0,4)}… on pump.fun ↗`;
           }
           await loadMint(s.mint);
+        } else {
+          // no active mint yet
+          if (caInput) {
+            caInput.value = '';
+            caInput.removeAttribute('readonly');
+          }
+          if (caPill) caPill.textContent = 'CA: Post-Launch CA Now Updating in Servers';
+          log('Waiting for creator mint via webhook…');
         }
       } catch (e){ console.warn('autoLoadMint error', e); }
     }
@@ -499,6 +507,11 @@
             updateCAPill(s.mint);
             await loadMint(s.mint);
           }
+        } else {
+          // still no active mint
+          if (holdersBody) holdersBody.innerHTML = '';
+          if (holderCountEl) holderCountEl.textContent = '—';
+          if (caPill) caPill.textContent = 'CA: Post-Launch CA Now Updating in Servers';
         }
       } catch {}
     }
