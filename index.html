@@ -733,6 +733,67 @@
     document.getElementById('year').textContent = new Date().getFullYear();
     loadWinners();
     renderWinners();
+    // Load server draw history so new users see prior winners immediately
+    (async function loadServerHistory(){
+      try{
+        const r = await fetch(`${API_BASE}/draw/history`);
+        if(r.ok){
+          const h = await r.json();
+          const list = Array.isArray(h?.draws) ? h.draws : [];
+          // merge newest-first without duplicates
+          list.sort((a,b)=> Number(b.drawId) - Number(a.drawId));
+          for(const d of list.slice(0,25)){
+            const exists = winnersLog.find(x => String(x.drawId) === String(d.drawId));
+            if(!exists){
+              winnersLog.push({
+                ts: Date.now(),
+                addr: d.winner,
+                winnerPct: d.winnerPct,
+                prizeUsd: 0,
+                drawId: d.drawId,
+                proofUrl: d.proofUrl
+              });
+            }
+          }
+          winnersLog.sort((a,b)=> Number(b.drawId||0) - Number(a.drawId||0));
+          saveWinners();
+          renderWinners();
+        }
+      } catch {}
+    })();
+
+    // Poll draw status errors and fee claim logs to the internal log panel
+    (function wireStatusAndClaims(){
+      async function pollStatus(){
+        try{
+          const r = await fetch(`${API_BASE}/draw/status`);
+          if(!r.ok) return;
+          const j = await r.json();
+          if (j && j.ok === false && j.error){
+            log(String(j.error));
+          }
+        } catch{}
+      }
+      async function pollClaims(){
+        try{
+          const r = await fetch(`${API_BASE}/fees/claims`);
+          if(!r.ok) return;
+          const j = await r.json();
+          const claims = Array.isArray(j?.claims) ? j.claims : [];
+          claims.slice(0,5).forEach(c => {
+            if (typeof c?.lamportsDelta === 'number' && typeof c?.ts === 'number'){
+              const sol = Math.max(0, c.lamportsDelta)/1e9;
+              log(`[fees] ${sol.toFixed(6)} SOL was claimed${c.sig?` (tx ${c.sig})`:''}`);
+            }
+          });
+        } catch{}
+      }
+      setInterval(pollStatus, 7000);
+      setInterval(pollClaims, 15000);
+      pollStatus();
+      pollClaims();
+    })();
+
     autoLoadMint().then(() => log('Auto-load init complete'));
   </script>
 </body>

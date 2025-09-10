@@ -623,7 +623,11 @@ async function triggerDrandDraw() {
         lastDrawAttempt = { ts: Date.now(), ok: true };
       }
     } else {
-      const errTxt = `[draw] drand draw failed with status ${res.status}`;
+      let errTxt = `[draw] drand draw failed with status ${res.status}`;
+      try {
+        const bodyTxt = await res.text();
+        if (bodyTxt) errTxt += ` body=${bodyTxt}`;
+      } catch {}
       console.warn(errTxt);
       lastDrawAttempt = { ts: Date.now(), ok: false, error: errTxt };
     }
