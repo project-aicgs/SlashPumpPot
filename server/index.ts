@@ -312,6 +312,27 @@ app.get("/draw/status", async (_req, reply) => {
   return { ok: true, ...lastDrawAttempt };
 });
 
+// Inspect current eligibility after cap/exclusions for the active mint
+app.get("/draw/eligibility", async (_req, reply) => {
+  const mint = store.getMint();
+  if (!mint) return reply.status(404).send({ ok: false, error: "no_active_mint" });
+  try{
+    const { manifest } = await buildSnapshotManifest(mint);
+    const eligible = manifest.holders || [];
+    const excluded = manifest.excluded || [];
+    const totalRaw = BigInt(manifest.totalRaw || '0');
+    const eligibleArr = eligible.map((h: any) => {
+      const raw = BigInt(h.raw);
+      const pctEligible = totalRaw > 0n ? Number((raw * 10000n) / totalRaw) / 100 : 0;
+      return { owner: h.owner, raw: h.raw, pctEligible };
+    }).sort((a: any, b: any) => Number(BigInt(b.raw) - BigInt(a.raw)));
+    return { ok: true, mint, capPct: Number(process.env.HOLDER_CAP_PCT || 10), eligible: eligibleArr, excluded };
+  } catch(e){
+    reply.status(500);
+    return { ok: false, error: String((e as Error).message || e) };
+  }
+});
+
 // ------------------------------------------------------------
 // Fees: auto-claim via PumpPortal and expose current dev wallet SOL balance
 // ------------------------------------------------------------
@@ -418,24 +439,12 @@ async function fetchDrandLatest(): Promise<{ round: number; randomness: string; 
 function pickWeightedWinner(holders: { owner: string; raw: string }[], randomnessHex: string): string {
   if (!holders?.length) throw new Error("no_eligible_holders");
   const weights = holders.map(h => ({ owner: h.owner, w: BigInt(h.raw) })).filter(x => x.w > 0n);
-  const totalPre = weights.reduce((s, x) => s + x.w, 0n);
-  if (totalPre === 0n) throw new Error("no_eligible_holders");
-  // Enforce 10% cap at selection time as a safety net (even if manifest omitted cap)
-  const capPctEnv = process.env.HOLDER_CAP_PCT ? Number(process.env.HOLDER_CAP_PCT) : 10;
-  const capPct = Number.isFinite(capPctEnv) && capPctEnv >= 0 ? capPctEnv : 10;
-  const capThreshold = (totalPre * BigInt(capPct)) / 100n;
-  let eligible = weights.filter(x => x.w <= capThreshold && (!DEV_PUBLIC_KEY || x.owner !== DEV_PUBLIC_KEY));
-  if (eligible.length !== weights.length) {
-    const excludedCount = weights.length - eligible.length;
-    const largest = weights[0]?.w ?? 0n;
-    console.log(`[draw] cap ${capPct}% -> excluded ${excludedCount} holders (largest=${largest.toString()}, total=${totalPre.toString()}, threshold=${capThreshold.toString()})`);
-  }
-  if (eligible.length === 0) {
-    throw new Error(`no_eligible_holders: all holders exceed ${capPct}% cap or are excluded (dev=${Boolean(DEV_PUBLIC_KEY)})`);
-  }
+  if (weights.length === 0) throw new Error("no_eligible_holders");
+  // Do NOT re-apply cap here; manifest already applied the 10% cap over the full supply.
+  const eligible = weights.filter(x => (!DEV_PUBLIC_KEY || x.owner !== DEV_PUBLIC_KEY));
+  if (eligible.length === 0) throw new Error("no_eligible_holders: only dev wallet remained after exclusions");
   const total = eligible.reduce((s, x) => s + x.w, 0n);
   if (total === 0n) throw new Error("no_eligible_holders");
-  // Use 256-bit number from hex randomness, mod total
   const r = BigInt(`0x${randomnessHex}`) % total;
   let acc = 0n;
   for (const x of eligible) { acc += x.w; if (r < acc) return x.owner; }
