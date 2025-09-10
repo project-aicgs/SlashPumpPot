@@ -158,6 +158,7 @@ app.get("/holders/stream", async (req, reply) => {
 type DrawStatus = "pending" | "fulfilled" | "failed";
 const draws = new Map<string, { mint: string; snapshotHash: string; status: DrawStatus; winner?: string; winnerPct?: number; randomness?: string; proofTx?: string; proofUrl?: string }>();
 let lastDrawId: string = "";
+let lastDrawAttempt: { ts: number; ok: boolean; error?: string } | undefined;
 
 // Persistent draws store (optional via DATA_DIR)
 import { writeFile, readFile } from "fs/promises";
@@ -306,12 +307,21 @@ app.get("/draw/history", async (_req, reply) => {
   return { ok: true, draws: list.slice(0, 100) };
 });
 
+app.get("/draw/status", async (_req, reply) => {
+  if (!lastDrawAttempt) return { ok: true, status: "unknown" };
+  return { ok: true, ...lastDrawAttempt };
+});
+
 // ------------------------------------------------------------
 // Fees: auto-claim via PumpPortal and expose current dev wallet SOL balance
 // ------------------------------------------------------------
+type FeeClaim = { ts: number; sig?: string; lamportsDelta?: number };
+const feeClaims: FeeClaim[] = [];
+
 async function claimCreatorFeesOnce(): Promise<string | undefined> {
   if (!DEV_PUBLIC_KEY || !DEV_PRIVATE_KEY_B58) return undefined;
   try {
+    const pre = await getDevWalletSolLamports();
     const res = await fetch("https://pumpportal.fun/api/trade-local", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -327,6 +337,15 @@ async function claimCreatorFeesOnce(): Promise<string | undefined> {
     const signer = Keypair.fromSecretKey(bs58.decode(DEV_PRIVATE_KEY_B58));
     tx.sign([signer]);
     const sig = await claimConn.sendTransaction(tx);
+    // small settle delay then fetch delta
+    setTimeout(async () => {
+      const post = await getDevWalletSolLamports();
+      const delta = post - pre;
+      feeClaims.unshift({ ts: Date.now(), sig, lamportsDelta: delta });
+      const deltaSol = Math.max(0, delta) / 1e9;
+      console.log(`[fees] ${deltaSol.toFixed(6)} SOL was claimed and added to the reward distribution wallet. tx=${sig}`);
+      if (feeClaims.length > 500) feeClaims.pop();
+    }, 4000);
     return sig;
   } catch { return undefined; }
 }
@@ -345,6 +364,10 @@ app.get("/fees", async (_req, reply) => {
   const priceUsd = await getSolUsdPrice();
   const usd = sol * priceUsd;
   return { ok: true, lamports, sol, priceUsd, usd };
+});
+
+app.get("/fees/claims", async (_req, reply) => {
+  return { ok: true, claims: feeClaims.slice(0, 50) };
 });
 
 // Optional auto-claim loop (disabled unless FEES_CLAIM_INTERVAL_MS set)
@@ -553,7 +576,7 @@ setInterval(async () => {
 // ------------------------------------------------------------
 // Authoritative schedule + automatic drand draw
 // ------------------------------------------------------------
-const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60 * 1000);
+const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 20 * 60 * 1000);
 const DRAW_ANCHOR_MS = Number(process.env.DRAW_ANCHOR_MS || 0); // epoch anchor; set to an exact hour start for hourly cadence
 
 function getNextBoundary(nowMs: number): number {
@@ -597,12 +620,17 @@ async function triggerDrandDraw() {
         draws.set(String(j.drawId), rec);
         lastDrawId = String(j.drawId);
         await saveDrawToDisk(String(j.drawId));
+        lastDrawAttempt = { ts: Date.now(), ok: true };
       }
     } else {
-      console.warn(`[draw] drand draw failed with status ${res.status}`);
+      const errTxt = `[draw] drand draw failed with status ${res.status}`;
+      console.warn(errTxt);
+      lastDrawAttempt = { ts: Date.now(), ok: false, error: errTxt };
     }
   } catch (e) {
-    console.warn('[draw] drand scheduler error', (e as Error).message);
+    const errMsg = (e as Error).message;
+    console.warn('[draw] drand scheduler error', errMsg);
+    lastDrawAttempt = { ts: Date.now(), ok: false, error: errMsg };
   }
 }
 
