@@ -334,7 +334,7 @@
     const drawIdEl = document.getElementById('drawId');
     const seedPrevEl = document.getElementById('seedPrev');
 
-    let sched = { now: Date.now(), intervalMs: 60*1000, nextAt: Date.now() + 60*1000 };
+    let sched = null;
     async function refreshSchedule(){
       try{
         const r = await fetch(`${API_BASE}/schedule`);
@@ -343,24 +343,25 @@
         if (j && typeof j.nextAt === 'number') sched = j;
       } catch {}
     }
-    setInterval(refreshSchedule, 15000);
-    refreshSchedule();
+    setInterval(refreshSchedule, 5000);
+    (async () => { await refreshSchedule(); requestAnimationFrame(tick); })();
     function tick(){
       const now = Date.now();
-      const ms = Math.max(0, (sched.nextAt||now) - now);
+      const next = (sched && typeof sched.nextAt === 'number') ? sched.nextAt : now + 60000;
+      const iv = (sched && typeof sched.intervalMs === 'number') ? sched.intervalMs : 60000;
+      const ms = Math.max(0, next - now);
       const s = Math.floor(ms/1000);
       const h = Math.floor(s/3600).toString().padStart(2,'0');
       const m = Math.floor((s%3600)/60).toString().padStart(2,'0');
       const ss = (s%60).toString().padStart(2,'0');
       if (timeLeftEl) timeLeftEl.textContent = `${h}:${m}:${ss}`;
       if (nowDateEl) nowDateEl.textContent = new Date(now).toLocaleString();
-      if (nextDateEl) nextDateEl.textContent = new Date(sched.nextAt||now).toLocaleString();
-      const elapsed = Math.max(0, (sched.intervalMs||60000) - ms);
-      const pct = Math.max(0, Math.min(100, (elapsed / (sched.intervalMs||60000)) * 100));
+      if (nextDateEl) nextDateEl.textContent = new Date(next).toLocaleString();
+      const elapsed = Math.max(0, iv - ms);
+      const pct = Math.max(0, Math.min(100, (elapsed / iv) * 100));
       if (hourProgressEl) hourProgressEl.style.width = `${pct}%`;
       requestAnimationFrame(tick);
     }
-    requestAnimationFrame(tick);
 
     // ————————————————————————————————
     // Pot animation (demo growth)
