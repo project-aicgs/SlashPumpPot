@@ -686,7 +686,7 @@
         const exists = winnersLog.find(x => String(x.drawId) === String(j.drawId));
         if(!exists){
           winnersLog.unshift({
-            ts: Date.now(),
+            ts: Number(j.drawId || Date.now()),
             addr: j.winner,
             winnerPct: j.winnerPct,
             prizeUsd: 0,
@@ -747,7 +747,7 @@
             const exists = winnersLog.find(x => String(x.drawId) === String(d.drawId));
             if(!exists){
               winnersLog.push({
-                ts: Date.now(),
+                ts: Number(d.drawId || Date.now()),
                 addr: d.winner,
                 winnerPct: d.winnerPct,
                 prizeUsd: 0,
