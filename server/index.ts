@@ -656,9 +656,12 @@ async function triggerDrandDraw() {
     if (res.ok) {
       const j = await res.json();
       console.log(`[draw] drand draw completed`, j);
-      // persist draw
+      // persist draw, preserving payoutSig if set by /draw/start_drand
       if (j?.ok && j.drawId) {
-        const rec = { mint: String(j.mint||''), snapshotHash: String(j.snapshotHash||''), status: "fulfilled" as const, winner: String(j.winner||''), winnerPct: Number(j.winnerPct||0), randomness: String(j.randomness||''), proofUrl: String(j.proofUrl||'') };
+        const prev = draws.get(String(j.drawId)) || {} as any;
+        const rec: any = { mint: String(j.mint||''), snapshotHash: String(j.snapshotHash||''), status: "fulfilled" as const, winner: String(j.winner||''), winnerPct: Number(j.winnerPct||0), randomness: String(j.randomness||''), proofUrl: String(j.proofUrl||'') };
+        if (j.payoutSig) rec.payoutSig = String(j.payoutSig);
+        if (!rec.payoutSig && (prev as any).payoutSig) rec.payoutSig = (prev as any).payoutSig;
         draws.set(String(j.drawId), rec);
         lastDrawId = String(j.drawId);
         await saveDrawToDisk(String(j.drawId));
