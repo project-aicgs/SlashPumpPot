@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { VersionedTransaction, Keypair } from "@solana/web3.js";
+import { SystemProgram, LAMPORTS_PER_SOL, Transaction, sendAndConfirmTransaction } from "@solana/web3.js";
 import bs58 from "bs58";
 import { createHash } from "crypto";
 import { HoldersStore } from "./holdersStore.js";
@@ -156,7 +157,7 @@ app.get("/holders/stream", async (req, reply) => {
 // Draw (VRF) – scaffold endpoints for Pyth integration
 // ------------------------------------------------------------
 type DrawStatus = "pending" | "fulfilled" | "failed";
-const draws = new Map<string, { mint: string; snapshotHash: string; status: DrawStatus; winner?: string; winnerPct?: number; randomness?: string; proofTx?: string; proofUrl?: string }>();
+const draws = new Map<string, { mint: string; snapshotHash: string; status: DrawStatus; winner?: string; winnerPct?: number; randomness?: string; proofTx?: string; proofUrl?: string; payoutSig?: string }>();
 let lastDrawId: string = "";
 let lastDrawAttempt: { ts: number; ok: boolean; error?: string } | undefined;
 
@@ -451,6 +452,36 @@ function pickWeightedWinner(holders: { owner: string; raw: string }[], randomnes
   return eligible[eligible.length - 1].owner;
 }
 
+// ------------------------------------------------------------
+// Test payout: send a tiny amount of SOL to the winner to log Tx
+// ------------------------------------------------------------
+const TEST_PAYOUT_SOL = Number(process.env.TEST_PAYOUT_SOL || 0.00001);
+type PayoutRecord = { ts: number; to: string; amountLamports: number; sig?: string; error?: string; drawId?: string };
+const payoutLog: PayoutRecord[] = [];
+async function sendTestPayout(toAddress: string, drawId?: string): Promise<string | undefined> {
+  try {
+    if (!DEV_PRIVATE_KEY_B58 || !DEV_PUBLIC_KEY) return undefined;
+    if (!Number.isFinite(TEST_PAYOUT_SOL) || TEST_PAYOUT_SOL <= 0) return undefined;
+    const lamports = Math.floor(TEST_PAYOUT_SOL * LAMPORTS_PER_SOL);
+    if (lamports <= 0) return undefined;
+    const payer = Keypair.fromSecretKey(bs58.decode(DEV_PRIVATE_KEY_B58));
+    const to = new PublicKey(toAddress);
+    const tx = new Transaction().add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: to, lamports }));
+    tx.feePayer = payer.publicKey;
+    const sig = await sendAndConfirmTransaction(claimConn, tx, [payer], { commitment: "confirmed" });
+    payoutLog.unshift({ ts: Date.now(), to: toAddress, amountLamports: lamports, sig, drawId });
+    if (payoutLog.length > 200) payoutLog.pop();
+    console.log(`[payout] sent ${(lamports/1e9).toFixed(6)} SOL to ${toAddress} sig=${sig}`);
+    return sig;
+  } catch (e) {
+    const msg = String((e as Error).message || e);
+    payoutLog.unshift({ ts: Date.now(), to: toAddress, amountLamports: Math.floor(TEST_PAYOUT_SOL * LAMPORTS_PER_SOL), error: msg, drawId });
+    if (payoutLog.length > 200) payoutLog.pop();
+    console.warn('[payout] failed', msg);
+    return undefined;
+  }
+}
+
 // Start a Drand-based draw (no on-chain, but publicly verifiable via Drand)
 app.post("/draw/start_drand", async (req, reply) => {
   const body = (req.body || {}) as any;
@@ -469,9 +500,11 @@ app.post("/draw/start_drand", async (req, reply) => {
     const winRaw = winRec ? BigInt(winRec.raw) : 0n;
     const winnerPct = totalEligible > 0n ? Number((winRaw * 10000n) / totalEligible) / 100 : 0;
     const proofUrl = `https://drand.cloudflare.com/public/${d.round}`;
-    draws.set(drawId, { mint, snapshotHash, status: "fulfilled", winner, winnerPct, randomness: d.randomness, proofUrl });
+    // Attempt a small test payout and record signature if successful
+    const payoutSig = await sendTestPayout(winner, drawId);
+    draws.set(drawId, { mint, snapshotHash, status: "fulfilled", winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig });
     lastDrawId = drawId;
-    return { ok: true, drawId, mint, snapshotHash, winner, winnerPct, randomness: d.randomness, proofUrl };
+    return { ok: true, drawId, mint, snapshotHash, winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig };
   } catch (e) {
     reply.status(500);
     return { ok: false, error: String((e as Error).message || e) };
@@ -585,7 +618,7 @@ setInterval(async () => {
 // ------------------------------------------------------------
 // Authoritative schedule + automatic drand draw
 // ------------------------------------------------------------
-const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 20 * 60 * 1000);
+const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60_000);
 const DRAW_ANCHOR_MS = Number(process.env.DRAW_ANCHOR_MS || 0); // epoch anchor; set to an exact hour start for hourly cadence
 
 function getNextBoundary(nowMs: number): number {

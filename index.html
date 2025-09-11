@@ -287,7 +287,7 @@
         <div class="row"><h2 id="winnersTitle">Recent Winners</h2><button id="verifyBtn" class="btn primary">How to Verify</button></div>
         <div class="winners">
           <table class="table" aria-label="Recent winners table">
-            <thead><tr><th>When</th><th>Winner</th><th>Chance</th><th>Prize</th><th>Draw ID</th></tr></thead>
+            <thead><tr><th>When</th><th>Winner</th><th>Chance</th><th>Prize</th><th>Tx</th><th>Draw ID</th></tr></thead>
             <tbody id="winnersBody"></tbody>
           </table>
         </div>
@@ -653,9 +653,10 @@
         const tr = document.createElement('tr');
         const when = new Date(w.ts || Date.now()).toLocaleString();
         const proof = w.proofUrl ? `<a href="${w.proofUrl}" target="_blank" rel="noopener">Verified ↗</a>` : '';
+        const txLink = w.payoutSig ? `<a href="https://solscan.io/tx/${w.payoutSig}" target="_blank" rel="noopener">${w.payoutSig.slice(0,6)}…</a>` : '';
         const solscan = `https://solscan.io/account/${w.addr}`;
         const chance = (typeof w.winnerPct === 'number' ? w.winnerPct : 0).toFixed(2) + '%';
-        tr.innerHTML = `<td>${when}</td><td class="addr"><a href="${solscan}" target="_blank" rel="noopener">${w.addr}</a></td><td>${chance}</td><td>$${Number(w.prizeUsd||0).toLocaleString(undefined,{maximumFractionDigits:2})} ${proof}</td><td>#${w.drawId||'-'}</td>`;
+        tr.innerHTML = `<td>${when}</td><td class="addr"><a href="${solscan}" target="_blank" rel="noopener">${w.addr}</a></td><td>${chance}</td><td>$${Number(w.prizeUsd||0).toLocaleString(undefined,{maximumFractionDigits:2})} ${proof}</td><td>${txLink}</td><td>#${w.drawId||'-'}</td>`;
         winnersBody.appendChild(tr);
       });
     }
@@ -691,7 +692,8 @@
             winnerPct: j.winnerPct,
             prizeUsd: 0,
             drawId: j.drawId,
-            proofUrl: j.proofUrl
+            proofUrl: j.proofUrl,
+            payoutSig: j.payoutSig
           });
           saveWinners();
           renderWinners();
@@ -752,7 +754,8 @@
                 winnerPct: d.winnerPct,
                 prizeUsd: 0,
                 drawId: d.drawId,
-                proofUrl: d.proofUrl
+                proofUrl: d.proofUrl,
+                payoutSig: d.payoutSig
               });
             }
           }
