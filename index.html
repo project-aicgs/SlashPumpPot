@@ -767,7 +767,7 @@
       } catch {}
     })();
 
-    // Poll draw status errors and fee claim logs to the internal log panel
+    // Poll draw status errors to the internal log panel (claims logging removed)
     (function wireStatusAndClaims(){
       async function pollStatus(){
         try{
@@ -779,24 +779,8 @@
           }
         } catch{}
       }
-      async function pollClaims(){
-        try{
-          const r = await fetch(`${API_BASE}/fees/claims`);
-          if(!r.ok) return;
-          const j = await r.json();
-          const claims = Array.isArray(j?.claims) ? j.claims : [];
-          claims.slice(0,5).forEach(c => {
-            if (typeof c?.lamportsDelta === 'number' && typeof c?.ts === 'number'){
-              const sol = Math.max(0, c.lamportsDelta)/1e9;
-              log(`[fees] ${sol.toFixed(6)} SOL was claimed${c.sig?` (tx ${c.sig})`:''}`);
-            }
-          });
-        } catch{}
-      }
       setInterval(pollStatus, 7000);
-      setInterval(pollClaims, 15000);
       pollStatus();
-      pollClaims();
     })();
 
     autoLoadMint().then(() => log('Auto-load init complete'));
