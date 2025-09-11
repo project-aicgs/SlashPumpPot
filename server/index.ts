@@ -79,6 +79,8 @@ async function reconcileAndBroadcast(mintStr: string) {
     await store.save();
     const holdersSerialized = snapshot.map(h => ({ owner: h.owner, raw: h.raw.toString() }));
     pushDiff({ type: "snapshot", mint: mintStr, decimals, holders: holdersSerialized, totalRaw: store.totalRaw().toString() });
+    // Reset draw anchor so schedule restarts from now for new token
+    drawAnchorMs = Date.now();
   } catch (e) {
     throw new Error(`snapshot_failed:${(e as Error).message}`);
   }
@@ -619,10 +621,10 @@ setInterval(async () => {
 // Authoritative schedule + automatic drand draw
 // ------------------------------------------------------------
 const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60_000);
-const DRAW_ANCHOR_MS = Number(process.env.DRAW_ANCHOR_MS || 0); // epoch anchor; set to an exact hour start for hourly cadence
+let drawAnchorMs = Number(process.env.DRAW_ANCHOR_MS || 0); // mutable anchor so we can reset on mint change
 
 function getNextBoundary(nowMs: number): number {
-  const anchor = Number.isFinite(DRAW_ANCHOR_MS) ? DRAW_ANCHOR_MS : 0;
+  const anchor = Number.isFinite(drawAnchorMs) ? drawAnchorMs : 0;
   if (!Number.isFinite(DRAW_INTERVAL_MS) || DRAW_INTERVAL_MS <= 0) return nowMs;
   const n = Math.floor((nowMs - anchor) / DRAW_INTERVAL_MS) + 1;
   return anchor + n * DRAW_INTERVAL_MS;
