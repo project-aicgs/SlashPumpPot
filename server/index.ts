@@ -163,7 +163,7 @@ app.get("/holders/stream", async (req, reply) => {
 // Draw (VRF) – scaffold endpoints for Pyth integration
 // ------------------------------------------------------------
 type DrawStatus = "pending" | "fulfilled" | "failed";
-const draws = new Map<string, { mint: string; snapshotHash: string; status: DrawStatus; winner?: string; winnerPct?: number; randomness?: string; proofTx?: string; proofUrl?: string; payoutSig?: string }>();
+const draws = new Map<string, { mint: string; snapshotHash: string; status: DrawStatus; winner?: string; winnerPct?: number; randomness?: string; proofTx?: string; proofUrl?: string; payoutSig?: string; payoutLamports?: number; payoutUsd?: number }>();
 let lastDrawId: string = "";
 let lastDrawAttempt: { ts: number; ok: boolean; error?: string } | undefined;
 
@@ -489,7 +489,7 @@ const PAYOUT_RESERVE_SOL = Number(process.env.PAYOUT_RESERVE_SOL || 0.0001); // 
 const CLAIM_BEFORE_PAYOUT = String(process.env.CLAIM_BEFORE_PAYOUT || "0") === "1"; // optional: sweep fees just before paying out
 type PayoutRecord = { ts: number; to: string; amountLamports: number; sig?: string; error?: string; drawId?: string };
 const payoutLog: PayoutRecord[] = [];
-async function sendPayout(toAddress: string, drawId?: string): Promise<string | undefined> {
+async function sendPayout(toAddress: string, drawId?: string): Promise<{ sig?: string; lamports?: number } | undefined> {
   try {
     if (!DEV_PRIVATE_KEY_B58 || !DEV_PUBLIC_KEY) return undefined;
     const payer = Keypair.fromSecretKey(bs58.decode(DEV_PRIVATE_KEY_B58));
@@ -520,7 +520,7 @@ async function sendPayout(toAddress: string, drawId?: string): Promise<string | 
     payoutLog.unshift({ ts: Date.now(), to: toAddress, amountLamports: lamports, sig, drawId });
     if (payoutLog.length > 200) payoutLog.pop();
     console.log(`[payout] sent ${(lamports/1e9).toFixed(6)} SOL to ${toAddress} sig=${sig}`);
-    return sig;
+    return { sig, lamports };
   } catch (e) {
     const msg = String((e as Error).message || e);
     payoutLog.unshift({ ts: Date.now(), to: toAddress, amountLamports: Math.floor(TEST_PAYOUT_SOL * LAMPORTS_PER_SOL), error: msg, drawId });
@@ -548,11 +548,15 @@ app.post("/draw/start_drand", async (req, reply) => {
     const winRaw = winRec ? BigInt(winRec.raw) : 0n;
     const winnerPct = totalEligible > 0n ? Number((winRaw * 10000n) / totalEligible) / 100 : 0;
     const proofUrl = `https://drand.cloudflare.com/public/${d.round}`;
-    // Attempt payout per configured strategy and record signature if successful
-    const payoutSig = await sendPayout(winner, drawId);
-    draws.set(drawId, { mint, snapshotHash, status: "fulfilled", winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig });
+    // Attempt payout per configured strategy and record signature + amount if successful
+    const payout = await sendPayout(winner, drawId);
+    const priceUsd = await getSolUsdPrice();
+    const payoutLamports = payout?.lamports || 0;
+    const payoutUsd = (payoutLamports/1e9) * priceUsd;
+    const payoutSig = payout?.sig;
+    draws.set(drawId, { mint, snapshotHash, status: "fulfilled", winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig, payoutLamports, payoutUsd });
     lastDrawId = drawId;
-    return { ok: true, drawId, mint, snapshotHash, winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig };
+    return { ok: true, drawId, mint, snapshotHash, winner, winnerPct, randomness: d.randomness, proofUrl, payoutSig, payoutLamports, payoutUsd };
   } catch (e) {
     reply.status(500);
     return { ok: false, error: String((e as Error).message || e) };
@@ -710,6 +714,8 @@ async function triggerDrandDraw() {
         const rec: any = { mint: String(j.mint||''), snapshotHash: String(j.snapshotHash||''), status: "fulfilled" as const, winner: String(j.winner||''), winnerPct: Number(j.winnerPct||0), randomness: String(j.randomness||''), proofUrl: String(j.proofUrl||'') };
         if (j.payoutSig) rec.payoutSig = String(j.payoutSig);
         if (!rec.payoutSig && (prev as any).payoutSig) rec.payoutSig = (prev as any).payoutSig;
+        if (typeof j.payoutLamports === 'number') rec.payoutLamports = j.payoutLamports;
+        if (typeof j.payoutUsd === 'number') rec.payoutUsd = j.payoutUsd;
         draws.set(String(j.drawId), rec);
         lastDrawId = String(j.drawId);
         await saveDrawToDisk(String(j.drawId));
