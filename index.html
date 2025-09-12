@@ -381,8 +381,16 @@
         }
       } catch{}
     }
-    setInterval(refreshFees, 5000);
-    refreshFees();
+    // Poll fees with gentle backoff to avoid 429s
+    (function feesPoller(){
+      let iv = 15000; // start at 15s
+      let maxIv = 60000; // cap at 60s
+      async function loop(){
+        try{ await refreshFees(); iv = 15000; } catch { iv = Math.min(maxIv, iv * 2); }
+        setTimeout(loop, iv);
+      }
+      loop();
+    })();
 
     // ————————————————————————————————
     // Token input + external links

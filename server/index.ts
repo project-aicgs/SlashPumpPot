@@ -386,12 +386,27 @@ async function getDevWalletSolLamports(): Promise<number> {
   } catch { return 0; }
 }
 
+const FEES_CACHE_MS = Number(process.env.FEES_CACHE_MS || 30_000);
+let _feesCache = { ts: 0, lamports: 0, priceUsd: 0 } as { ts: number; lamports: number; priceUsd: number };
 app.get("/fees", async (_req, reply) => {
-  const lamports = await getDevWalletSolLamports();
-  const sol = lamports / 1e9;
-  const priceUsd = await getSolUsdPrice();
-  const usd = sol * priceUsd;
-  return { ok: true, lamports, sol, priceUsd, usd };
+  const now = Date.now();
+  try {
+    if (now - _feesCache.ts < FEES_CACHE_MS && _feesCache.ts > 0) {
+      const solCached = _feesCache.lamports / 1e9;
+      return { ok: true, lamports: _feesCache.lamports, sol: solCached, priceUsd: _feesCache.priceUsd, usd: solCached * _feesCache.priceUsd };
+    }
+    const lamports = await getDevWalletSolLamports();
+    const priceUsd = await getSolUsdPrice();
+    _feesCache = { ts: now, lamports, priceUsd };
+    const sol = lamports / 1e9;
+    return { ok: true, lamports, sol, priceUsd, usd: sol * priceUsd };
+  } catch {
+    if (_feesCache.ts > 0) {
+      const solCached = _feesCache.lamports / 1e9;
+      return { ok: true, lamports: _feesCache.lamports, sol: solCached, priceUsd: _feesCache.priceUsd, usd: solCached * _feesCache.priceUsd };
+    }
+    return { ok: true, lamports: 0, sol: 0, priceUsd: 0, usd: 0 };
+  }
 });
 
 app.get("/fees/claims", async (_req, reply) => {
