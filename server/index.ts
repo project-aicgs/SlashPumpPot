@@ -168,7 +168,8 @@ let lastDrawId: string = "";
 let lastDrawAttempt: { ts: number; ok: boolean; error?: string } | undefined;
 
 // Persistent draws store (optional via DATA_DIR)
-import { writeFile, readFile } from "fs/promises";
+import { writeFile, readFile, mkdir } from "fs/promises";
+import { dirname } from "path";
 const DATA_DIR = process.env.DATA_DIR || "";
 const DRAWS_PATH = DATA_DIR ? `${DATA_DIR}/draws.json` : "";
 async function loadDrawsFromDisk() {
@@ -191,6 +192,7 @@ async function saveDrawToDisk(drawId: string) {
   const list: any[] = [];
   for (const [id, v] of draws.entries()) list.push({ drawId: id, ...v });
   list.sort((a,b)=> Number(a.drawId) - Number(b.drawId));
+  try { await mkdir(dirname(DRAWS_PATH), { recursive: true }); } catch {}
   await writeFile(DRAWS_PATH, JSON.stringify(list.slice(-1000), null, 2));
 }
 

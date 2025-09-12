@@ -1,4 +1,5 @@
-import { writeFile, readFile } from "fs/promises";
+import { writeFile, readFile, mkdir } from "fs/promises";
+import { dirname } from "path";
 
 type BalanceMap = Map<string, bigint>;
 
@@ -44,6 +45,8 @@ export class HoldersStore {
   }
 
   async save() {
+    // Ensure directory exists (handles missing DATA_DIR mount gracefully)
+    try { await mkdir(dirname(this.persistPath), { recursive: true }); } catch {}
     await writeFile(this.persistPath, JSON.stringify({
       mint: this.mint,
       decimals: this.decimals,
