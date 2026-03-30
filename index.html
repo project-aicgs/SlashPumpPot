@@ -371,7 +371,7 @@
     <div id="faqModal" class="modal" aria-hidden="true">
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="faqTitle">
         <h3 id="faqTitle">FAQ</h3>
-        <p><strong>How often is the jackpot distributed?</strong><br/>Every 20 minutes. The countdown and progress bar show exactly when the next draw occurs.</p>
+        <p><strong>How often is the jackpot distributed?</strong><br/>Currently every <strong>1 minute</strong> for testing. The countdown and progress bar follow the server schedule.</p>
         <p><strong>How are entries determined?</strong><br/>Entries are proportional to your on-chain token balance at snapshot time. No tokens are spent to enter.</p>
         <p><strong>Is the selection provably fair?</strong><br/>Yes. We are integrating on-chain randomness (VRF) and will publish the snapshot hash and selection proof so anyone can verify.</p>
         <p><strong>Do I need to connect a wallet?</strong><br/>No. This site reads on-chain data and shows odds/holders without requiring a connect.</p>
@@ -435,7 +435,7 @@
     <!-- Hero: Hourly draw countdown -->
     <section class="hero hero--broadcast" aria-labelledby="heroTitle">
       <h1 id="heroTitle">Live Jackpot Draw</h1>
-      <div class="hero-sub">Distribution occurs on fixed cadence. Draw lifecycle and winner validation are exposed in real time.</div>
+      <div class="hero-sub">Distribution runs on a fixed cadence (1 minute while testing). Draw lifecycle and winner validation update in real time.</div>
       <div class="countdown-wrap">
         <span class="pill">Now: <b id="nowDate">—</b></span>
         <span class="pill">Next draw at: <b id="nextDate">—</b></span>

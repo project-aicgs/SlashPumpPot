@@ -690,7 +690,9 @@ setInterval(async () => {
 // ------------------------------------------------------------
 // Authoritative schedule + automatic drand draw
 // ------------------------------------------------------------
-const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60_000);
+// Testing: fixed 1-minute cadence so Recent Winners fills quickly. For production, switch to:
+//   const DRAW_INTERVAL_MS = Math.max(1_000, Number(process.env.DRAW_INTERVAL_MS || 1_200_000));
+const DRAW_INTERVAL_MS = 60_000;
 let drawAnchorMs = Number(process.env.DRAW_ANCHOR_MS || 0); // mutable anchor so we can reset on mint change
 
 async function ensureDefaultMint() {
@@ -783,6 +785,7 @@ function scheduleNextDrawTick() {
 
 // Bootstrap token + start draw scheduler (after drawAnchorMs exists for reconcile)
 await ensureDefaultMint();
+console.log(`[schedule] draw interval ${DRAW_INTERVAL_MS}ms (${DRAW_INTERVAL_MS / 60_000} min)`);
 scheduleNextDrawTick();
 
 app.listen({ port: PORT, host: "0.0.0.0" }).then(() => {
