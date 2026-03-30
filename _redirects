@@ -1,0 +1,2 @@
+# Backup to netlify.toml — proxy /api/* to Render. Change the host if your Render URL differs.
+/api/*  https://pump-pot.onrender.com/:splat  200

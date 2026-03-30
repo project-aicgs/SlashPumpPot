@@ -116,11 +116,28 @@ app.get("/holders/:mint", async (req, reply) => {
   };
 });
 
+let lastLazyBootstrapMs = 0;
+const LAZY_BOOTSTRAP_INTERVAL_MS = 8_000;
+
 app.get("/holders/active", async (req, reply) => {
-  const current = store.getMint();
-  if (current) return { mint: current };
-  reply.status(404);
-  return { ok: false, error: "no_active_mint" };
+  let current = store.getMint();
+  if (!current && DEFAULT_MINT) {
+    const now = Date.now();
+    if (now - lastLazyBootstrapMs >= LAZY_BOOTSTRAP_INTERVAL_MS) {
+      lastLazyBootstrapMs = now;
+      try {
+        await reconcileAndBroadcast(DEFAULT_MINT);
+      } catch (e) {
+        console.warn("[mint] lazy bootstrap failed:", (e as Error).message);
+      }
+      current = store.getMint();
+    }
+  }
+  if (current) return { ok: true, mint: current };
+  const hint = !HELIUS_API_KEY
+    ? "Set HELIUS_API_KEY in Render Environment, redeploy, then reload."
+    : "Check Render logs for [mint] or snapshot_failed; verify RPC can read this mint.";
+  return { ok: false, error: "no_active_mint", mint: "", hint };
 });
 
 // Simple full snapshot endpoint (stateless): always computes latest set
@@ -306,9 +323,9 @@ app.get("/draw/:id", async (req, reply) => {
 });
 
 app.get("/draw/latest", async (_req, reply) => {
-  if (!lastDrawId) return reply.status(404).send({ ok: false, error: "no_draws" });
+  if (!lastDrawId) return { ok: false, error: "no_draws" };
   const d = draws.get(lastDrawId);
-  if (!d) return reply.status(404).send({ ok: false, error: "no_draws" });
+  if (!d) return { ok: false, error: "no_draws" };
   return { ok: true, drawId: lastDrawId, ...d };
 });
 
