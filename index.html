@@ -4,161 +4,344 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>PumpPot – Jackpot for Holders</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="assets/pumppot.png" />
   <style>
     :root{
-      /* Fresh minimal palette (less dashboard-y) */
-      --bg: #fbfbf8;             /* soft neutral */
-      --panel: #ffffff;          /* pure white */
-      --panel-2: #f4f3ee;        /* warm neutral */
-      --text: #121512;           /* near-black */
-      --muted: #6a6f69;          /* gentle gray */
-      --brand: #159b52;          /* fresh emerald */
-      --accent: #e7f4ec;         /* subtle emerald wash */
-      --danger: #96421a;         /* muted warning */
-      --success: #167244;        /* confirmation */
-      --line: rgba(0,0,0,.10);
-      --glass: rgba(0,0,0,.03);
-      --shadow: 0 8px 28px rgba(0,0,0,.05);
-      --ring: 0 0 0 3px rgba(21,155,82,.18);
-      --radius: 14px;
-      --gap: 18px;
+      --bg:#0b1020;
+      --bg-soft:#101834;
+      --panel:#ffffff;
+      --panel-soft:#f5f7fb;
+      --text:#0e1a33;
+      --muted:#5b6780;
+      --brand:#0f49b9;
+      --brand-strong:#0a2f79;
+      --brand-accent:#e9f0ff;
+      --line:rgba(14,26,51,.12);
+      --line-strong:rgba(14,26,51,.22);
+      --success:#0a8d62;
+      --danger:#b03142;
+      --radius:16px;
+      --shadow-1:0 8px 20px rgba(12,20,40,.08);
+      --shadow-2:0 20px 44px rgba(10,20,44,.16);
+      --ring:0 0 0 3px rgba(15,73,185,.2);
     }
-    /* Dark mode removed by request */
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0; font: 15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
-      color:var(--text);
-      background:
-        radial-gradient(900px 420px at 90% -10%, rgba(14,122,70,.08), transparent 60%),
-        radial-gradient(640px 360px at -10% 110%, rgba(207,231,217,.22), transparent 60%),
-        var(--bg);
+      margin:0;
+      font:15px/1.58 "Inter", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial;
+      color:#dbe5ff;
+      background:linear-gradient(180deg, var(--bg) 0%, var(--bg-soft) 100%);
     }
     a{color:inherit}
-    .container{max-width:1120px;margin:0 auto;padding:22px}
-    .hero{position:relative;border:0;background:linear-gradient(180deg,var(--panel),var(--panel-2));border-radius:var(--radius);padding:16px 16px;box-shadow:var(--shadow);margin-bottom:var(--gap)}
-    .hero h1{margin:0 0 6px;font-size:22px;letter-spacing:.2px}
-    .hero-sub{color:var(--muted);font-size:13px;margin-bottom:10px}
-    .countdown-wrap{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .pill{background:var(--glass);border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
-    .progress{height:8px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);overflow:hidden}
-    .progress > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),#1a8f57)}
+    .container{max-width:1320px;margin:0 auto;padding:18px 22px 32px}
 
-    /* Big Fee box */
-    .fee-hero{position:relative;background:var(--brand);border-radius:18px;padding:22px 24px;box-shadow:var(--shadow);margin:var(--gap) auto;max-width:720px;text-align:center;border:0}
-    .fee-title{margin:0 0 6px;font-size:14px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.9)}
-    .fee-amount{font-size:clamp(40px,6vw,72px);font-weight:900;letter-spacing:.3px;color:#ffffff}
-    .fee-sub{color:rgba(255,255,255,.9);font-size:12px}
-
-    /* Modal */
-    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.28);z-index:50}
-    .modal.active{display:flex}
-    .modal-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);max-width:680px;width:92%;padding:16px}
-    .modal-card h3{margin:0 0 6px;font-size:18px}
-    .modal-card p{margin:8px 0;color:var(--muted)}
-    .modal-actions{display:flex;justify-content:flex-end;margin-top:10px}
-
-    /* Header */
-    .header{display:flex;align-items:center;gap:16px;justify-content:space-between;padding:12px 0}
+    .header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+      padding:10px 2px 16px;
+      border-bottom:1px solid rgba(255,255,255,.14);
+      margin-bottom:18px;
+    }
     .brand{display:flex;align-items:center;gap:12px;text-decoration:none}
-    .brand-logo{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#ffffff; border:1px solid var(--line); box-shadow:var(--shadow); overflow:hidden}
-    .brand-title{font-weight:700;letter-spacing:.2px;font-size:19px; color:#0f0f0f}
-    .header-right{display:flex;align-items:center;gap:10px}
-    .hotbar{display:flex;align-items:center;gap:8px}
+    .brand-logo{
+      width:40px;height:40px;border-radius:12px;overflow:hidden;
+      border:1px solid rgba(255,255,255,.24);
+      box-shadow:0 4px 12px rgba(0,0,0,.2);
+      background:#fff;
+    }
+    .brand-title{font-size:20px;font-weight:800;letter-spacing:.2px;color:#fff}
+    .header-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .hotbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 
-    .btn{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--text);padding:10px 14px;border-radius:12px;cursor:pointer;transition:.18s; box-shadow: 0 2px 0 rgba(0,0,0,.03)}
-    .btn:hover{transform:translateY(-1px);box-shadow:0 10px 20px rgba(0,0,0,.08)}
-    .btn:focus{outline:none; box-shadow: var(--shadow), var(--ring)}
-    .btn.primary{background:#ffffff; border:1px solid var(--line)}
-    .btn.gold{background:#0e7a46; color:#ffffff; border: 1px solid rgba(12,40,24,.10)}
+    .btn{
+      appearance:none;border:1px solid rgba(255,255,255,.24);
+      background:rgba(255,255,255,.08);color:#eaf0ff;
+      padding:9px 13px;border-radius:11px;cursor:pointer;
+      transition:.18s ease;font-weight:600;
+    }
+    .btn:hover{background:rgba(255,255,255,.16)}
+    .btn:focus{outline:none;box-shadow:var(--ring)}
+    .btn.primary{background:rgba(255,255,255,.08)}
+    .btn.gold{background:#fff;color:var(--brand-strong);border-color:rgba(255,255,255,.5)}
 
-    .seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .seg button{border:0;background:transparent;padding:10px 14px;color:var(--muted)}
-    .seg button.active{color:var(--text);background:var(--glass)}
+    .network{
+      display:flex;align-items:center;gap:8px;
+      border:1px solid rgba(255,255,255,.24);
+      background:rgba(255,255,255,.08);
+      color:#eaf0ff;
+      padding:8px 12px;border-radius:11px
+    }
+    .dot{width:8px;height:8px;border-radius:99px;background:#1fd196;box-shadow:0 0 0 4px rgba(31,209,150,.2)}
 
-    .network{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);padding:8px 12px;border-radius:12px}
-    .dot{width:8px;height:8px;border-radius:99px;background:#0e7a46;box-shadow:0 0 0 4px rgba(14,122,70,.18)}
+    .mast{
+      background:var(--panel);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:24px;
+      box-shadow:var(--shadow-2);
+      padding:26px 24px;
+      display:grid;
+      gap:22px;
+      grid-template-columns:1.3fr .9fr;
+      align-items:center;
+      margin-bottom:16px;
+    }
+    @media (max-width:980px){ .mast{grid-template-columns:1fr} }
+    .mast-left{min-width:0}
+    .mast-logo{width:80px;height:80px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#fff}
+    .mast-title{margin:12px 0 8px;font-size:clamp(36px,5vw,64px);line-height:1.02;color:var(--brand-strong)}
+    .mast-sub{margin:0;color:var(--muted);max-width:60ch;font-size:15px}
+    .pill.ca{
+      margin-top:16px;
+      display:inline-flex;align-items:center;gap:8px;
+      padding:8px 12px;border-radius:999px;
+      border:1px solid var(--line);
+      background:var(--panel-soft);
+      font-family:ui-monospace,Consolas,Menlo,monospace;
+      color:var(--text);
+    }
+    .pill .copy{border:1px solid var(--line);background:#fff;padding:6px 10px;border-radius:8px;cursor:pointer}
+    .pill .copy:hover{background:var(--brand-accent)}
+    .mast-right{
+      display:grid;gap:12px;
+      background:var(--brand-strong);
+      color:#fff;
+      border-radius:16px;
+      padding:16px;
+      border:1px solid rgba(255,255,255,.22);
+    }
+    .mast-kicker{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.9}
+    .fee-amount{font-size:clamp(38px,5vw,64px);line-height:1.04;font-weight:900}
 
-    /* Flow layout (non-dashboard) */
-    .grid{display:block;margin-top:14px}
+    .hero{
+      background:var(--panel);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:var(--shadow-1);
+      padding:18px;
+      margin-bottom:16px;
+    }
+    .hero h1{margin:0 0 6px;font-size:24px}
+    .hero--broadcast h1{margin-top:8px}
+    .hero-sub{margin:0 0 12px;color:var(--muted);font-size:14px}
+    .countdown-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .pill{background:var(--panel-soft);border:1px solid var(--line);padding:6px 10px;border-radius:999px;color:var(--text)}
+    .progress{height:8px;border-radius:999px;background:#e2e9f5;border:1px solid var(--line);overflow:hidden}
+    .progress>span{display:block;height:100%;background:var(--brand)}
+    .hero--broadcast{position:relative;padding-top:20px}
+    .hero--broadcast::before{
+      content:"";
+      position:absolute;top:10px;left:18px;width:7px;height:7px;border-radius:50%;
+      background:#e23d4d;box-shadow:0 0 0 2px rgba(226,61,77,.25);
+    }
+    .hero--broadcast::after{
+      content:"SCHEDULE";
+      position:absolute;top:6px;left:34px;font-size:9px;letter-spacing:.2em;color:var(--muted);font-weight:800;
+    }
 
-    .card{background:transparent; border:0; border-radius:0; padding:10px 0}
-    .card h2{margin:0 0 8px;font-size:20px;font-weight:800;letter-spacing:.2px}
-    .sub{color:var(--muted);font-size:13px}
-    .row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .feature-strip{
+      display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px;
+    }
+    .feature{
+      background:rgba(255,255,255,.07);
+      color:#e8efff;
+      border:1px solid rgba(255,255,255,.14);
+      border-radius:14px;
+      padding:12px;
+    }
+    .feature b{display:block;font-size:13px;margin-bottom:4px}
+    .feature span{font-size:12px;opacity:.9}
+    @media (max-width:880px){ .feature-strip{grid-template-columns:1fr} }
 
-    /* Minimal hero (centered) */
-    .mast{display:grid;place-items:center;margin:8px 0 14px}
-    .mast-logo{width:96px;height:96px;border-radius:20px;display:grid;place-items:center;background:#fff;border:1px solid var(--line);box-shadow:var(--shadow); overflow:hidden}
-    .mast-title{margin:10px 0 6px;font-size:44px;line-height:1.1;letter-spacing:.3px;color:var(--brand)}
-    .mast-sub{color:var(--muted);font-size:14px;text-align:center;max-width:680px}
-    .pill.ca{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:999px;font-family:ui-monospace,Consolas,Menlo,monospace}
-    .pill .copy{border:1px solid var(--line);background:var(--panel-2);padding:6px 10px;border-radius:10px;cursor:pointer}
-    .pill .copy:hover{background:#fff}
+    /* Holders vs winners: give winners column more width; keep holders usable (min floor). */
+    .grid{
+      display:grid;
+      grid-template-columns:minmax(380px,1fr) minmax(460px,1.28fr);
+      gap:16px;
+      align-items:start;
+    }
+    @media (max-width:1100px){ .grid{grid-template-columns:1fr} }
+    .full{grid-column:1 / -1}
+    .grid-main-stack{
+      grid-column:1;
+      display:flex;
+      flex-direction:column;
+      gap:16px;
+      min-width:0;
+    }
+    .side{grid-column:2}
+    @media (max-width:1100px){ .grid-main-stack,.side{grid-column:auto} }
+    .grid>*{min-width:0}
 
-    /* Pot */
-    .pot{position:relative;display:grid;grid-template-columns: 1fr 1fr; gap:18px;align-items:center}
-    @media (max-width: 980px){ .pot{grid-template-columns:1fr} }
-
-    .cauldron{position:relative;height:220px;background:radial-gradient(60% 80% at 50% 20%, rgba(245,200,67,.28), transparent 50%), linear-gradient(180deg, #1b1d26, #0f1016 60%, #090a0f); border-radius:24px; border:1px solid var(--line); display:grid;place-items:center; overflow:hidden}
-    .bubbles{position:absolute;inset:0;pointer-events:none}
-    .bubble{position:absolute;bottom:-18px;width:10px;height:10px;border-radius:999px;background:rgba(245,200,67,.8);filter:blur(.3px);animation:rise 6s linear infinite;opacity:.85}
-    .bubble:nth-child(2){left:20%;animation-delay:1s}
-    .bubble:nth-child(3){left:35%;width:8px;height:8px;animation-delay:2.2s}
-    .bubble:nth-child(4){left:50%;width:12px;height:12px;animation-delay:3.1s}
-    .bubble:nth-child(5){left:70%;width:9px;height:9px;animation-delay:4.5s}
-    .bubble:nth-child(6){left:85%;width:7px;height:7px;animation-delay:5.4s}
-    @keyframes rise{0%{transform:translateY(0) scale(.9)} 100%{transform:translateY(-260px) scale(1.1);opacity:0}}
-
-    .pot-amount{font-size:42px;font-weight:800;letter-spacing:.5px}
-    .pot-caption{color:var(--muted);font-size:13px;margin-top:6px}
-    .countdown{display:flex;gap:8px;margin-top:12px}
-    .pill{background:var(--glass);border:1px solid var(--line);padding:6px 10px;border-radius:999px;font-variant-numeric:tabular-nums}
-
-    .mini{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-top:14px}
-    .mini .box{background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px}
+    .card{
+      background:var(--panel);
+      color:var(--text);
+      border:1px solid var(--line);
+      border-radius:16px;
+      box-shadow:var(--shadow-1);
+      padding:14px;
+    }
+    .card--chrome{padding:0;overflow:hidden;border-radius:14px}
+    .card--chrome .holders,.card--chrome .winners{margin-top:0}
+    .chrome-head{
+      display:flex;align-items:center;gap:10px;
+      min-height:44px;padding:0 12px;
+      border-bottom:1px solid var(--line);
+      flex-wrap:wrap;
+    }
+    .chrome-head h2{margin:0;font-size:15px;font-weight:800;letter-spacing:.02em}
+    .chrome-body--pad{padding:14px 16px 16px}
+    .chrome-stack{display:grid;gap:12px}
+    /* Token — registry / document header (no traffic lights) */
+    .chrome-head--registry{
+      justify-content:space-between;align-items:center;
+      background:linear-gradient(180deg,#fafbfd,#f3f6fb);
+      border-bottom:2px solid var(--brand);
+      padding:12px 16px;
+    }
+    .chrome-registry-kicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+    .chrome-head--registry h2{font-size:18px;font-weight:800}
+    .chrome-head--registry .chip{align-self:center}
+    /* Live Holders — data rail (left accent, broadcast feel) */
+    .chrome-head--rail{
+      border-left:4px solid var(--success);
+      background:linear-gradient(90deg, rgba(10,141,98,.08), transparent 48%);
+      padding:10px 14px 10px 14px;
+      align-items:center;
+    }
+    .chrome-rail-badge{
+      margin-left:auto;font-size:10px;letter-spacing:.08em;text-transform:uppercase;
+      color:var(--muted);padding:4px 8px;border-radius:6px;border:1px solid var(--line);background:#fff;
+    }
+    .chrome-head--rail h2{font-size:17px;font-weight:800}
+    /* Recent Winners — macOS Terminal window */
+    .chrome-head--terminal{
+      background:linear-gradient(180deg,#ececec 0%,#e2e2e2 100%);
+      border-bottom:1px solid #c4c4c4;
+      padding:10px 12px;
+      gap:8px;
+    }
+    .chrome-traffic{display:flex;align-items:center;gap:7px;flex-shrink:0}
+    .chrome-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+    .chrome-dot--close{background:#ff5f57;box-shadow:inset 0 -1px 0 rgba(0,0,0,.12),0 0 0 0.5px rgba(0,0,0,.08)}
+    .chrome-dot--min{background:#febc2e;box-shadow:inset 0 -1px 0 rgba(0,0,0,.1),0 0 0 0.5px rgba(0,0,0,.06)}
+    .chrome-dot--max{background:#28c840;box-shadow:inset 0 -1px 0 rgba(0,0,0,.1),0 0 0 0.5px rgba(0,0,0,.06)}
+    .chrome-title{
+      flex:1;min-width:0;text-align:center;font-size:12px;font-weight:700;color:#4a4a4a;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    }
+    .chrome-head--terminal h2.chrome-title{margin:0;font-size:12px;font-weight:700;color:#4a4a4a}
+    .chrome-actions{flex-shrink:0;display:flex;align-items:center;gap:6px}
+    .btn--chrome{
+      appearance:none;border:1px solid #b8b8b8;background:#fff;color:var(--brand-strong);
+      padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;
+      box-shadow:0 1px 0 rgba(255,255,255,.9) inset;
+    }
+    .btn--chrome:hover{background:var(--brand-accent);border-color:var(--brand)}
+    .chrome-body--terminal{background:#f4f4f4;border-top:1px solid #fff}
+    .table--terminal{
+      table-layout:fixed;
+      width:100%;
+      font-variant-numeric:tabular-nums;
+      font-size:12px;
+    }
+    .table--terminal th,.table--terminal td{
+      font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+      min-width:0;
+      word-break:break-word;
+      overflow-wrap:anywhere;
+      vertical-align:top;
+      padding:8px 6px;
+    }
+    .table--terminal thead th{border-bottom-color:#d0d8e6;background:#ebebeb}
+    /* Fit six columns without horizontal page scroll */
+    .table--terminal th:nth-child(1),
+    .table--terminal td:nth-child(1){width:16%}
+    .table--terminal th:nth-child(2),
+    .table--terminal td:nth-child(2){width:26%}
+    .table--terminal th:nth-child(3),
+    .table--terminal td:nth-child(3){width:9%}
+    .table--terminal th:nth-child(4),
+    .table--terminal td:nth-child(4){width:18%}
+    .table--terminal th:nth-child(5),
+    .table--terminal td:nth-child(5){width:15%}
+    .table--terminal th:nth-child(6),
+    .table--terminal td:nth-child(6){width:16%}
+    /* Internal logs — output / stream (distinct from Terminal) */
+    .chrome-head--output{
+      background:linear-gradient(180deg,#353b46,#2d323b);
+      border-bottom:1px solid #1a1e24;color:#9aaec0;
+      padding:8px 14px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    }
+    .chrome-output-prompt{color:#5ee4a3;font-weight:bold;margin-right:6px}
+    .chrome-output-title{flex:1;margin:0;font-size:12px;font-weight:600;color:#c5d4e3}
+    .chrome-output-meta{font-size:10px;color:#6b7d8f;letter-spacing:.04em}
+    .chrome-body--dark{background:#1e2329;color:#c8d4e0}
+    .log-panel{
+      height:250px;overflow:auto;border:1px solid #2e3540;border-radius:8px;
+      padding:10px 12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;
+      line-height:1.55;background:#171b20;color:#b8c5d4;
+    }
+    .card h2{margin:0 0 8px;font-size:19px}
+    .card--chrome>.chrome-body--pad>h2{margin:0 0 8px;font-size:19px}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel-soft);padding:6px 10px;border-radius:999px}
     .label{color:var(--muted);font-size:12px}
-    .value{font-weight:700; font-variant-numeric: tabular-nums}
+    .value{font-weight:800}
 
-    /* Token & Odds */
-    .token-box{display:grid; gap:12px}
+    .caRow{display:grid;grid-template-columns:1fr 220px;gap:12px}
+    @media (max-width:760px){ .caRow{grid-template-columns:1fr} }
+    .metric-box{background:var(--panel-soft); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:center}
     .input{display:flex;gap:8px}
-    input[type="text"], select{width:100%; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--panel-2); color:var(--text)}
-    input::placeholder{color:var(--muted)}
+    input[type="text"], select{
+      width:100%;padding:11px 12px;border-radius:10px;border:1px solid var(--line);
+      background:#fff;color:var(--text)
+    }
+    input::placeholder{color:#8a97ad}
     .help{color:var(--muted);font-size:12px}
-    /* CA + holders row */
-    .caRow{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch}
-    @media (max-width: 720px){ .caRow{grid-template-columns:1fr} }
-    .metric-box{background:var(--panel-2); border:1px solid var(--line); border-radius:12px; padding:12px; display:flex; flex-direction:column; justify-content:center}
 
-    .odds{margin-top:6px}
-    .bar{height:10px;border-radius:999px;background:linear-gradient(90deg, var(--brand), #1a8f57); box-shadow: none}
-    .bar-wrap{height:10px;border-radius:999px;background:var(--panel-2); border:1px solid var(--line); overflow:hidden}
-
-    /* Live Holders / Winners */
-    .holders{margin-top:4px; max-height: 460px; overflow:auto}
-    .winners{margin-top:4px; max-height: 460px; overflow:auto}
+    .holders{margin-top:6px;max-height:450px;overflow:auto}
+    .winners{margin-top:6px;max-height:520px;overflow-y:auto;overflow-x:hidden}
     .table{width:100%;border-collapse:collapse}
-    .table th, .table td{padding:10px 10px; border-bottom:1px solid var(--line); text-align:left}
-    .table th{color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.02em}
-    .table tbody tr:hover{background:var(--glass)}
-    .addr{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
-    .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--panel);padding:6px 10px;border-radius:999px}
-    .tag{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;line-height:1;border:1px solid var(--line);background:var(--accent);color:var(--text)}
-    .tag.lp{background:#e5f6ed;border-color:rgba(14,122,70,.25)}
+    .table th, .table td{padding:10px 8px;border-bottom:1px solid #e7edf7;text-align:left}
+    .table th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+    .table tbody tr:hover{background:#f7faff}
+    .addr{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Courier New",monospace}
+    .tag{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:11px;line-height:1;border:1px solid var(--line);background:var(--brand-accent);color:var(--text)}
+    .tag.lp{background:#e9fbf4;border-color:rgba(10,141,98,.25)}
+    .bar-wrap{height:8px;border-radius:999px;background:#e5ebf6;border:1px solid #dce5f5;overflow:hidden}
+    .bar{height:100%;border-radius:999px;background:var(--brand)}
 
-    /* Tabs */
-    .tabs{display:flex; gap:8px; margin:10px 0 14px}
-    .tab{padding:8px 12px;border:1px solid var(--line);background:var(--panel-2);border-radius:999px;color:var(--muted);cursor:pointer}
-    .tab.active{color:var(--text);background:var(--glass)}
-
-    /* Footer */
-    .footer{display:flex;justify-content:space-between;align-items:center;margin:22px 0 8px;color:var(--muted);font-size:12px}
+    .footer{
+      margin:18px 0 4px;
+      padding-top:12px;
+      border-top:1px solid rgba(255,255,255,.15);
+      display:flex;justify-content:space-between;align-items:center;gap:10px;
+      color:#d4deff;font-size:12px
+    }
     .links{display:flex;gap:14px;align-items:center}
 
-    /* Utility */
+    .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,8,23,.55);z-index:50}
+    .modal.active{display:flex}
+    .modal-card{
+      background:var(--panel);color:var(--text);border:1px solid var(--line);
+      border-radius:16px;box-shadow:var(--shadow-2);max-width:700px;width:92%;padding:16px
+    }
+    .modal-card h3{margin:0 0 8px}
+    .modal-card p{color:var(--muted)}
+    .modal-actions{display:flex;justify-content:flex-end}
+
+    .card.reveal{opacity:0;transform:translateY(16px)}
+    .card.reveal.in{opacity:1;transform:none;transition:opacity .45s ease, transform .45s ease}
+
     .hidden{display:none}
     .success{color:var(--success)}
     .danger{color:var(--danger)}
@@ -218,21 +401,41 @@
 
     <!-- Minimal centered hero with CA pill -->
     <section class="mast" aria-labelledby="siteTitle">
-      <div class="mast-logo"><img src="assets/pumppot.png" alt="PumpPot" style="width:100%;height:100%;object-fit:cover;border-radius:20px"/></div>
-      <h1 id="siteTitle" class="mast-title">PumpPot</h1>
-      <p class="mast-sub">Provably-fair hourly draws for token holders. Entries are proportional to on-chain balances. No wallet connection needed.</p>
-      <div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:center">
+      <div class="mast-left">
+        <div class="mast-logo"><img src="assets/pumppot.png" alt="PumpPot" style="width:100%;height:100%;object-fit:cover;border-radius:18px"/></div>
+        <h1 id="siteTitle" class="mast-title">PumpPot</h1>
+        <p class="mast-sub">Enterprise-grade, provably fair jackpot infrastructure for token communities. Draws are deterministic, auditable, and built for trust at scale.</p>
         <span class="pill ca" title="Token contract address">
           <span id="caPill">—</span>
           <button id="caCopy" class="copy" aria-label="Copy CA">Copy</button>
         </span>
       </div>
+      <aside class="mast-right" aria-label="Live rewards panel">
+        <span class="mast-kicker">Fees + Subsidy Rewards</span>
+        <div class="fee-amount" id="feeAmount">$0.00</div>
+        <span style="font-size:13px;opacity:.9">Live pool updates from on-chain + indexer data</span>
+      </aside>
+    </section>
+
+    <section class="feature-strip" aria-label="Platform highlights">
+      <article class="feature">
+        <b>Provable Fairness</b>
+        <span>Randomness proofs and deterministic winner selection for transparent operations.</span>
+      </article>
+      <article class="feature">
+        <b>Real-Time Infrastructure</b>
+        <span>Continuous holders, schedule, and payout-state synchronization from backend services.</span>
+      </article>
+      <article class="feature">
+        <b>Audit-Friendly Interface</b>
+        <span>High-clarity data presentation for teams, communities, and compliance stakeholders.</span>
+      </article>
     </section>
 
     <!-- Hero: Hourly draw countdown -->
-    <section class="hero" aria-labelledby="heroTitle">
+    <section class="hero hero--broadcast" aria-labelledby="heroTitle">
       <h1 id="heroTitle">Live Jackpot Draw</h1>
-      <div class="hero-sub">Next distribution occurs on a fixed cadence (testing: every minute). All holders are entered proportionally.</div>
+      <div class="hero-sub">Distribution occurs on fixed cadence. Draw lifecycle and winner validation are exposed in real time.</div>
       <div class="countdown-wrap">
         <span class="pill">Now: <b id="nowDate">—</b></span>
         <span class="pill">Next draw at: <b id="nextDate">—</b></span>
@@ -241,71 +444,79 @@
       <div class="progress" style="margin-top:10px"><span id="hourProgress" style="width:0%"></span></div>
     </section>
 
-    <!-- Big Fee box -->
-    <section class="fee-hero" aria-labelledby="feeTitle">
-      <h2 id="feeTitle" class="fee-title">Fees + Subsidy Rewards</h2>
-      <div class="fee-amount" id="feeAmount">$0.00</div>
-    </section>
-
     <!-- Main Grid -->
     <div class="grid">
-      <!-- Left: Pot + Token + Odds -->
-      <!-- Jackpot hidden per request -->
-
-      <section class="card token-box" aria-labelledby="tokenTitle" style="grid-column: 1 / -1;">
-        <div class="row">
-          <h2 id="tokenTitle">Token Info</h2>
-          <span class="chip"><strong>Status:</strong> <span id="tokenStatus" class="success">Live</span></span>
-        </div>
-        <div class="caRow">
-          <div class="input">
-            <input id="caInput" type="text" spellcheck="false" placeholder="Token address (set via server)" aria-label="Token contract address" readonly />
+      <section class="card card--chrome reveal full" aria-labelledby="tokenTitle">
+        <header class="chrome-head chrome-head--registry">
+          <div>
+            <div class="chrome-registry-kicker">Mint &amp; eligibility</div>
+            <h2 id="tokenTitle">Token Overview</h2>
           </div>
-          <div class="metric-box">
-            <div class="label">Holders</div>
-            <div class="value" id="holderCount">—</div>
+          <span class="chip"><strong>Status:</strong> <span id="tokenStatus" class="danger">Offline</span></span>
+        </header>
+        <div class="chrome-body chrome-body--pad chrome-stack">
+          <div class="caRow">
+            <div class="input">
+              <input id="caInput" type="text" spellcheck="false" placeholder="Token address (set via server)" aria-label="Token contract address" readonly />
+            </div>
+            <div class="metric-box">
+              <div class="label">Eligible Holders</div>
+              <div class="value" id="holderCount">—</div>
+            </div>
+          </div>
+          <div class="help">Entries are weighted by current holding percentage at snapshot time. No tokens are spent to participate.</div>
+        </div>
+      </section>
+
+      <div class="grid-main-stack">
+        <section class="card card--chrome reveal" aria-labelledby="holdersTitle">
+          <header class="chrome-head chrome-head--rail">
+            <h2 id="holdersTitle">Live Holders</h2>
+            <span class="chrome-rail-badge">Weighted snapshot</span>
+          </header>
+          <div class="chrome-body chrome-body--pad">
+            <div class="holders">
+              <table class="table" aria-label="Top holders table">
+                <thead><tr><th>Address</th><th>Balance</th><th>Share</th></tr></thead>
+                <tbody id="holdersBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card--chrome reveal" aria-labelledby="activityTitle">
+          <header class="chrome-head chrome-head--output">
+            <span class="chrome-output-prompt" aria-hidden="true">&gt;</span>
+            <h2 id="activityTitle" class="chrome-output-title">Internal Logs</h2>
+            <span class="chrome-output-meta">pumpot.stream</span>
+          </header>
+          <div class="chrome-body chrome-body--dark chrome-body--pad">
+            <div id="log" class="log-panel" role="log" aria-live="polite"></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card card--chrome reveal side" aria-labelledby="winnersTitle">
+        <header class="chrome-head chrome-head--terminal">
+          <div class="chrome-traffic" aria-hidden="true">
+            <span class="chrome-dot chrome-dot--close" title="Close"></span>
+            <span class="chrome-dot chrome-dot--min" title="Minimize"></span>
+            <span class="chrome-dot chrome-dot--max" title="Zoom"></span>
+          </div>
+          <h2 id="winnersTitle" class="chrome-title">Recent Winners</h2>
+          <div class="chrome-actions">
+            <button type="button" id="verifyBtn" class="btn--chrome">How to Verify</button>
+          </div>
+        </header>
+        <div class="chrome-body chrome-body--terminal">
+          <div class="winners">
+            <table class="table table--terminal" aria-label="Recent winners table">
+              <thead><tr><th>When</th><th>Winner</th><th>Chance</th><th>Prize</th><th>Tx</th><th>Draw ID</th></tr></thead>
+              <tbody id="winnersBody"></tbody>
+            </table>
           </div>
         </div>
-        <div class="help">Tickets are your <strong>current holding %</strong>. No tokens are spent. Draw uses a verifiable on-chain seed.
-        </div>
-
-        
       </section>
-
-      <!-- New: Live Holders card (prominent) -->
-      <section class="card" aria-labelledby="holdersTitle">
-        <div class="row"><h2 id="holdersTitle">Live Holders</h2></div>
-        <div class="holders">
-          <table class="table" aria-label="Top holders table">
-            <thead><tr><th>Address</th><th>Balance</th><th>Share</th></tr></thead>
-            <tbody id="holdersBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- New: Winners card (separate, less prominent) -->
-      <section class="card" aria-labelledby="winnersTitle">
-        <div class="row"><h2 id="winnersTitle">Recent Winners</h2><button id="verifyBtn" class="btn primary">How to Verify</button></div>
-        <div class="winners">
-          <table class="table" aria-label="Recent winners table">
-            <thead><tr><th>When</th><th>Winner</th><th>Chance</th><th>Prize</th><th>Tx</th><th>Draw ID</th></tr></thead>
-            <tbody id="winnersBody"></tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Right: Internal Logs only -->
-      <section class="card" aria-labelledby="activityTitle">
-        <div class="row">
-          <h2 id="activityTitle">Internal Logs</h2>
-        </div>
-        <div style="margin-top:8px">
-          <div class="label">Log</div>
-          <div id="log" style="height:220px;overflow:auto;border:1px solid var(--line);background:var(--panel-2);border-radius:12px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace"></div>
-        </div>
-      </section>
-
-      <!-- Removed explainer; replaced by FAQ modal trigger in header -->
     </div>
 
     <footer class="footer">
@@ -741,9 +952,33 @@
     }
 
     // ————————————————————————————————
+    // Micro-interactions (premium polish)
+    // ————————————————————————————————
+    function wireCardReveal(){
+      const cards = [...document.querySelectorAll('.card.reveal')];
+      if (!cards.length) return;
+      if (!('IntersectionObserver' in window)) {
+        cards.forEach((c)=> c.classList.add('in'));
+        return;
+      }
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          entry.target.classList.add('in');
+          io.unobserve(entry.target);
+        });
+      }, { threshold: 0.18 });
+      cards.forEach((card, i) => {
+        card.style.transitionDelay = `${Math.min(i * 60, 220)}ms`;
+        io.observe(card);
+      });
+    }
+
+    // ————————————————————————————————
     // Init with a demo CA
     // ————————————————————————————————
     document.getElementById('year').textContent = new Date().getFullYear();
+    wireCardReveal();
     loadWinners();
     renderWinners();
     // Load server draw history so new users see prior winners immediately
