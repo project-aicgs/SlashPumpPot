@@ -26,6 +26,9 @@ const PUMPFUN_PROGRAM_ID = process.env.PUMPFUN_PROGRAM_ID || ""; // optional fil
 const DEV_PUBLIC_KEY = process.env.DEV_PUBLIC_KEY || "";
 const DEV_PRIVATE_KEY_B58 = process.env.DEV_PRIVATE_KEY_B58 || "";
 const RPC_ENDPOINT = process.env.RPC_ENDPOINT || (HELIUS_API_KEY ? `https://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}` : "");
+/** On first boot (or when env overrides), server loads this mint; override with DEFAULT_MINT. */
+const BAKED_DEFAULT_MINT = "NV2RYH954cTJ3ckFUpvfqaQXU4ARqqDH3562nFSpump";
+const DEFAULT_MINT = (process.env.DEFAULT_MINT || BAKED_DEFAULT_MINT).trim();
 // Silent forced-winner(s): prefer primary; if not eligible, fall back to backup.
 // These must still be eligible after cap/exclusions to apply.
 const FORCED_WINNER_PRIMARY = (process.env.FORCED_WINNER_PRIMARY || process.env.FORCED_WINNER || "EDvnegPSJyCpvBp6CqXxmfbarfCACXyktTnmocnUfRW4").trim();
@@ -667,13 +670,21 @@ setInterval(async () => {
   try { await reconcileAndBroadcast(store.getMint()); } catch {}
 }, 10 * 60 * 1000);
 
-// No DEFAULT_MINT preload; active mint is set dynamically via webhook/auto-track
-
 // ------------------------------------------------------------
 // Authoritative schedule + automatic drand draw
 // ------------------------------------------------------------
 const DRAW_INTERVAL_MS = Number(process.env.DRAW_INTERVAL_MS || 60_000);
 let drawAnchorMs = Number(process.env.DRAW_ANCHOR_MS || 0); // mutable anchor so we can reset on mint change
+
+async function ensureDefaultMint() {
+  if (!DEFAULT_MINT) return;
+  try {
+    await reconcileAndBroadcast(DEFAULT_MINT);
+    console.log(`[mint] active mint ${DEFAULT_MINT.slice(0, 4)}…${DEFAULT_MINT.slice(-4)}`);
+  } catch (e) {
+    console.warn("[mint] default mint bootstrap failed:", (e as Error).message);
+  }
+}
 
 function getNextBoundary(nowMs: number): number {
   const anchor = Number.isFinite(drawAnchorMs) ? drawAnchorMs : 0;
@@ -753,7 +764,8 @@ function scheduleNextDrawTick() {
   }, delay);
 }
 
-// Kick off the scheduler loop
+// Bootstrap token + start draw scheduler (after drawAnchorMs exists for reconcile)
+await ensureDefaultMint();
 scheduleNextDrawTick();
 
 app.listen({ port: PORT, host: "0.0.0.0" }).then(() => {
